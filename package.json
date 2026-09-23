@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "dev-mac": "bash ./scripts/start-dev.sh",
     "prepare": "husky"
   },
   "keywords": [],
