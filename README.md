@@ -160,7 +160,7 @@ pnpm --filter backend exec puppeteer browsers install chrome
 - **继续**：校验通过后沿用这个已通过校验的浏览器上下文继续抓页。实测把 `cf_clearance` 交给独立无头实例仍会被 Cloudflare 重新挑战，因此不做 Cookie 搬运，而是复用同一浏览器会话；任务结束时自动关闭窗口并释放 profile。
 - **失败路径**：超过 `VERIFICATION_TIMEOUT_MS` → `CHALLENGE_TIMEOUT`；用户取消 → `CRAWL_ABORTED`；窗口被关闭 → `CHALLENGE_FAILED`；验证后仍是挑战页 → `CHALLENGE_FAILED`；同一任务最多触发 3 次验证。
 - **站点微调**：适配器可通过 `challenge.detect` / `challenge.successSelector` / `challenge.successCookies` / `challenge.verificationUrl` 覆盖或补充通用规则；`detect` 返回 `null` 表示明确不是挑战，返回 `undefined` 则交回通用规则。`girl-atlas` 声明了 `cf_clearance` 与验证入口首页。
-- **profile 过期**：启动时清理超过 `VERIFICATION_PROFILE_TTL_MS`（默认 7 天）未使用的 profile。
+- **profile 过期**：启动时清理超过 `VERIFICATION_PROFILE_TTL_MS`（默认 7 天）未使用的 profile。`.data/chrome-verification-profile` 只是本机验证通过的浏览器配置，可安全删除（删后下次抓 girl-atlas 需要重新验证一次）。
 
 ### SSE 事件
 
@@ -280,6 +280,19 @@ pnpm --filter backend build
 pnpm --filter frontend lint
 pnpm --filter frontend build
 ```
+
+### 端到端回归脚本
+
+`scripts/e2e/` 下的脚本会自己启动本地静态站点、驱动真实浏览器，并把抓取输出写到 `storage/_e2e-*`。**测试结束（含失败、Ctrl-C）会自动删除这些目录**，不会碰 `storage/` 里的其它图片分组。
+
+```bash
+pnpm dev-mac            # 先启动前后端
+pnpm e2e:ui             # 默认路径 25 项 UI 断言
+pnpm e2e:adapters       # 站点预设 11 项断言
+pnpm e2e:girl-atlas     # 人机验证流程（需要后端已配置可用代理）
+```
+
+清理逻辑在 `scripts/e2e/lib/test-run.cjs`：只允许删除 `storage/_e2e-*`，启动时还会顺带清理上次异常退出遗留的同名前缀目录；`scripts/e2e/lib/fixture-server.cjs` 负责按需拉起静态站点。
 
 本次重构后的实测结果：
 
