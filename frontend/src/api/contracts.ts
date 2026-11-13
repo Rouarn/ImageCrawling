@@ -31,6 +31,26 @@ export interface CrawlOptionsMeta {
   limits: CrawlLimits;
 }
 
+export interface AdapterPresetOptions {
+  useHeadless?: boolean;
+  maxPages?: number;
+}
+
+/** 后端 /api/adapters 返回的站点预设 */
+export interface AdapterSummary {
+  id: string;
+  label: string;
+  description: string;
+  entryUrl?: string;
+  requires: string[];
+  notes: string[];
+  options?: AdapterPresetOptions;
+}
+
+export interface AdaptersResponse {
+  adapters: AdapterSummary[];
+}
+
 export type CrawlLogLevel = 'info' | 'warn' | 'error';
 export type CrawlMode = 'auto' | 'pattern';
 export type FetchMode = 'static' | 'headless';

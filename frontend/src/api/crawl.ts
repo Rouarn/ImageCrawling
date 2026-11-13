@@ -1,5 +1,7 @@
 import { api, readErrorResponse } from './client';
 import type {
+  AdapterSummary,
+  AdaptersResponse,
   CrawlEvent,
   CrawlOptionsMeta,
   CrawlRequest,
@@ -7,6 +9,12 @@ import type {
 
 export function fetchCrawlOptions(): Promise<CrawlOptionsMeta> {
   return api.get<CrawlOptionsMeta>('/crawl/options');
+}
+
+/** 站点适配器预设，仅用于表单自动填充，不影响未选择预设时的行为 */
+export async function fetchAdapters(): Promise<AdapterSummary[]> {
+  const response = await api.get<AdaptersResponse>('/adapters');
+  return response.adapters;
 }
 
 /**

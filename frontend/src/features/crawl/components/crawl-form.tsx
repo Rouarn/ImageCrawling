@@ -1,15 +1,16 @@
 import { useState, type ChangeEvent } from 'react';
 import {
   BranchesOutlined,
+  CompassOutlined,
   FolderOpenOutlined,
   LinkOutlined,
   ReloadOutlined,
   SyncOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Segmented } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Segmented, Select } from 'antd';
 import type { CrawlRequest } from '@/api/contracts';
-import { useCrawlOptions } from '../queries';
+import { useCrawlOptions, useSiteAdapters } from '../queries';
 import { deriveOutDir } from '../lib/derive-out-dir';
 import { CrawlAdvancedFields } from './crawl-advanced-fields';
 import { Panel } from '@/components/ui/panel';
@@ -50,17 +51,40 @@ function parseHeaders(raw?: string): Record<string, string> | undefined {
 export function CrawlForm() {
   const [form] = Form.useForm<CrawlFormValues>();
   const options = useCrawlOptions();
+  const adapters = useSiteAdapters();
   const { data: health } = useSystemHealth();
   const startTask = useCrawlTaskStore((state) => state.start);
   const status = useCrawlTaskStore((state) => state.status);
   const running = status === 'running';
   const [outDirTouched, setOutDirTouched] = useState(false);
   const [mode, setMode] = useState<CrawlModeOption>('auto');
+  const [presetId, setPresetId] = useState('');
+  const preset = adapters.find((item) => item.id === presetId);
 
   const handleUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (outDirTouched) return;
     const derived = deriveOutDir(event.target.value);
     form.setFieldValue('outDir', derived);
+  };
+
+  const handlePresetChange = (value?: string) => {
+    const nextId = value ?? '';
+    setPresetId(nextId);
+    const next = adapters.find((item) => item.id === nextId);
+    if (!next) return;
+
+    if (next.entryUrl) {
+      form.setFieldValue('url', next.entryUrl);
+      if (!outDirTouched) {
+        form.setFieldValue('outDir', deriveOutDir(next.entryUrl));
+      }
+    }
+    if (next.options?.useHeadless !== undefined) {
+      form.setFieldValue('useHeadless', next.options.useHeadless);
+    }
+    if (next.options?.maxPages !== undefined) {
+      form.setFieldValue('maxPages', next.options.maxPages);
+    }
   };
 
   const handleFinish = (values: CrawlFormValues) => {
@@ -88,6 +112,7 @@ export function CrawlForm() {
     form.resetFields();
     setOutDirTouched(false);
     setMode('auto');
+    setPresetId('');
   };
 
   return (
@@ -113,6 +138,50 @@ export function CrawlForm() {
         }}
         className="space-y-4"
       >
+        <Form.Item
+          label="站点预设"
+          extra={
+            <span className="text-[11px]">
+              选中后自动填入该站点入口地址与建议参数；不选择时使用通用抓取
+            </span>
+          }
+        >
+          <Select
+            allowClear
+            value={presetId || undefined}
+            onChange={handlePresetChange}
+            placeholder="通用抓取（不指定站点）"
+            suffixIcon={<CompassOutlined />}
+            options={adapters.map((adapter) => ({
+              value: adapter.id,
+              label: adapter.label,
+            }))}
+          />
+        </Form.Item>
+
+        {preset && (
+          <Alert
+            type={preset.requires.length > 0 ? 'warning' : 'info'}
+            showIcon
+            title={preset.label}
+            description={
+              <div className="space-y-1 text-xs">
+                <p>{preset.description}</p>
+                {preset.requires.length > 0 && (
+                  <ul className="list-disc space-y-0.5 pl-4">
+                    {preset.requires.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+                {preset.notes.map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
+              </div>
+            }
+          />
+        )}
+
         <Form.Item
           name="url"
           label="目标页面 URL"

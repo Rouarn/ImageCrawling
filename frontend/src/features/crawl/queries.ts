@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCrawlOptions } from '@/api/crawl';
-import type { CrawlOptionsMeta } from '@/api/contracts';
+import { fetchAdapters, fetchCrawlOptions } from '@/api/crawl';
+import type { AdapterSummary, CrawlOptionsMeta } from '@/api/contracts';
 
 export const FALLBACK_CRAWL_OPTIONS: CrawlOptionsMeta = {
   defaults: {
@@ -25,4 +25,14 @@ export function useCrawlOptions(): CrawlOptionsMeta {
     retry: 1,
   });
   return data ?? FALLBACK_CRAWL_OPTIONS;
+}
+
+export function useSiteAdapters(): AdapterSummary[] {
+  const { data } = useQuery({
+    queryKey: ['site-adapters'],
+    queryFn: fetchAdapters,
+    staleTime: Infinity,
+    retry: 1,
+  });
+  return data ?? [];
 }
