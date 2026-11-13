@@ -5,6 +5,8 @@
  * 全部收敛在 adapters/ 目录下的具体适配器文件里。
  */
 
+import type { AdapterChallengeRules } from '../types/challenge';
+
 export type AdapterLogLevel = 'info' | 'warn' | 'error';
 export type AdapterLogger = (level: AdapterLogLevel, message: string) => void;
 
@@ -101,6 +103,8 @@ export interface SiteAdapter {
   /** 非空时在 /api/adapters 中作为可选项返回 */
   readonly preset?: AdapterPreset;
   readonly pagination?: AdapterPagination;
+  /** 可选：人机校验的站点规则，未声明时全部走通用判定 */
+  readonly challenge?: AdapterChallengeRules;
   /** 域名或 URL 匹配 */
   matches(url: URL): boolean;
   /** 静态入口 URL 改写 */
@@ -124,6 +128,7 @@ export interface AdapterRuntime {
   imageHeaders?: (imageUrl: string, pageUrl: string) => Record<string, string>;
   allowHttpErrors: boolean;
   pagination?: AdapterPagination;
+  challenge?: AdapterChallengeRules;
   notes: string[];
 }
 

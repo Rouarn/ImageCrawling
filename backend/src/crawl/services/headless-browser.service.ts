@@ -15,8 +15,11 @@ import {
 } from '../../common/utils/chrome-path.util';
 import { AppConfigService } from '../../config/app-config.service';
 import type { ScrollStrategy } from '../adapters/types';
+import { ChallengeDetectedError } from '../types/challenge';
 import type { ResolvedCrawlOptions } from '../types/crawl-options';
+import { parseCookieHeader } from '../utils/cookie.util';
 import { buildBrowserHeaders, resolveUserAgent } from '../utils/headers.util';
+import { ChallengeDetector } from './challenge-detector.service';
 
 const IMAGE_URL_PATTERN =
   /\.(jpg|jpeg|png|gif|webp|svg|avif|heic|ico|bmp|tiff)(\?.*)?$/i;
@@ -40,7 +43,10 @@ export class HeadlessBrowserService implements OnModuleDestroy {
   private readonly browsers = new Map<string, Promise<Browser>>();
   private readonly chrome: ChromeResolution;
 
-  constructor(config: AppConfigService) {
+  constructor(
+    config: AppConfigService,
+    private readonly challengeDetector: ChallengeDetector,
+  ) {
     this.chrome = resolveChromeExecutable({
       configuredPath: config.chromePath,
       puppeteerExecutablePath: readPuppeteerExecutablePath,
@@ -62,12 +68,29 @@ export class HeadlessBrowserService implements OnModuleDestroy {
     pageUrl: string,
     options: ResolvedCrawlOptions,
     signal: AbortSignal,
+    sessionPage?: Page,
   ): Promise<string[]> {
+    // 人工验证通过后沿用验证窗口的浏览器上下文：独立的无头实例会被重新挑战
+    if (sessionPage && !sessionPage.isClosed()) {
+      return this.extractFromPage(sessionPage, pageUrl, options, signal, false);
+    }
+
     const browser = await this.getBrowser(options.adapter?.proxyUrl);
     const page = await browser.newPage();
+    return this.extractFromPage(page, pageUrl, options, signal, true);
+  }
 
+  private async extractFromPage(
+    page: Page,
+    pageUrl: string,
+    options: ResolvedCrawlOptions,
+    signal: AbortSignal,
+    closeAfter: boolean,
+  ): Promise<string[]> {
     try {
-      await this.configurePage(page, options);
+      if (closeAfter) {
+        await this.configurePage(page, options, pageUrl);
+      }
       const intercepted = this.collectInterceptedImages(page);
 
       const response = await page.goto(pageUrl, {
@@ -83,6 +106,21 @@ export class HeadlessBrowserService implements OnModuleDestroy {
           { url: pageUrl },
         );
       }
+
+      // 人机校验优先于普通 HTTP 错误：命中后交给抓取主干转人工验证
+      const pageInfo = await page.evaluate(() => ({
+        title: document.title,
+        html: document.documentElement.outerHTML.slice(0, 8000),
+      }));
+      const detection = this.challengeDetector.detect({
+        url: pageUrl,
+        status: response.status(),
+        title: pageInfo.title,
+        html: pageInfo.html,
+        rules: options.adapter?.challenge,
+      });
+      if (detection) throw new ChallengeDetectedError(detection);
+
       if (response.status() >= 400) {
         if (!options.adapter?.allowHttpErrors) {
           throw new AppException(
@@ -234,6 +272,8 @@ export class HeadlessBrowserService implements OnModuleDestroy {
       );
       return [...merged];
     } catch (error) {
+      // 挑战异常需要原样冒泡，供抓取主干转入人工验证，不能被包装成普通失败
+      if (error instanceof ChallengeDetectedError) throw error;
       if (error instanceof AppException) throw error;
       if (isAbortSignalError(error, signal)) throw error;
       throw new AppException(
@@ -243,7 +283,7 @@ export class HeadlessBrowserService implements OnModuleDestroy {
         { url: pageUrl },
       );
     } finally {
-      await page.close().catch(() => undefined);
+      if (closeAfter) await page.close().catch(() => undefined);
     }
   }
 
@@ -254,13 +294,27 @@ export class HeadlessBrowserService implements OnModuleDestroy {
   private async configurePage(
     page: Page,
     options: ResolvedCrawlOptions,
+    pageUrl: string,
   ): Promise<void> {
     const userAgent = resolveUserAgent(options.headers);
     if (userAgent) await page.setUserAgent(userAgent);
 
+    // Cookie 统一走浏览器 Cookie 存储注入，避免与额外请求头重复下发同一个 Cookie
+    const headerOptions = { ...options.headers };
+    delete headerOptions.cookie;
     await page.setExtraHTTPHeaders({
-      ...buildBrowserHeaders(options.headers),
+      ...buildBrowserHeaders(headerOptions),
     });
+
+    // 人工验证拿到的 Cookie 同时注入 document.cookie，供前端脚本校验
+    const cookieHeader = options.headers.cookie;
+    if (cookieHeader) {
+      const cookies = parseCookieHeader(cookieHeader, pageUrl);
+      if (cookies.length > 0) {
+        await page.setCookie(...cookies).catch(() => undefined);
+      }
+    }
+
     await page.setViewport({ width: 1600, height: 1000 });
 
     await page.evaluateOnNewDocument(() => {

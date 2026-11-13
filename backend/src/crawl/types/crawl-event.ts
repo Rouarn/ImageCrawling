@@ -1,4 +1,5 @@
 import type { ErrorCode } from '../../common/errors/error-code';
+import type { ChallengeReason, ChallengeState } from './challenge';
 
 export type CrawlLogLevel = 'info' | 'warn' | 'error';
 
@@ -35,6 +36,21 @@ export type CrawlEvent =
     }
   | { type: 'page-fallback'; index: number; url: string; reason: string }
   | { type: 'page-failed'; index: number; url: string; message: string }
+  | {
+      /** 人机校验：任务挂起，等待用户在弹出的浏览器中完成验证 */
+      type: 'challenge';
+      taskId: string;
+      state: ChallengeState;
+      url: string;
+      verifyUrl: string;
+      reason: ChallengeReason;
+      status?: number;
+      title?: string;
+      matched: string[];
+      timeoutMs: number;
+      waitedMs: number;
+      message?: string;
+    }
   | { type: 'discover'; count: number; pages: number }
   | { type: 'download-start'; total: number }
   | {

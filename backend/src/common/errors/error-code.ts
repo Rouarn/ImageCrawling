@@ -22,6 +22,12 @@ export const ErrorCode = {
   STORAGE_ERROR: 'STORAGE_ERROR',
   /** 任务被主动取消 */
   CRAWL_ABORTED: 'CRAWL_ABORTED',
+  /** 人工验证超时 */
+  CHALLENGE_TIMEOUT: 'CHALLENGE_TIMEOUT',
+  /** 人工验证失败（窗口关闭、启动失败等） */
+  CHALLENGE_FAILED: 'CHALLENGE_FAILED',
+  /** 当前任务没有等待中的人工验证 */
+  CHALLENGE_NOT_PENDING: 'CHALLENGE_NOT_PENDING',
   /** 路由不存在 */
   NOT_FOUND: 'NOT_FOUND',
   /** 未捕获的服务器异常 */

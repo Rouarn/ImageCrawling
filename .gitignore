@@ -26,3 +26,6 @@ stats.html
 *.sw?
 
 storage
+
+# 运行时数据（人工验证 profile 等），不进入仓库
+.data

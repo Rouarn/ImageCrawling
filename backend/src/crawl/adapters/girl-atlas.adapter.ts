@@ -58,6 +58,11 @@ export const girlAtlasAdapter: SiteAdapter = {
       return null;
     },
   },
+  // 站点在 Cloudflare 后面：以 cf_clearance 作为通过依据，验证入口为站点首页
+  challenge: {
+    successCookies: ['cf_clearance', 'cf_clearance_v2'],
+    verificationUrl: 'https://www.girl-atlas.com/',
+  },
   matches(url) {
     return HOSTS.has(url.hostname.toLowerCase());
   },
@@ -95,8 +100,10 @@ export const girlAtlasAdapter: SiteAdapter = {
     return {
       proxyUrl,
       headers,
-      waitForSelector: 'main, article, .gallery, #content',
+      waitForSelector: '.main-content, .card, main, article, #content',
       clickSelectors: [
+        '#adult-18-modal button',
+        '#adult-18-modal .btn',
         '.age-gate button',
         '.age-verification button',
         '[class*="age-gate"] button',

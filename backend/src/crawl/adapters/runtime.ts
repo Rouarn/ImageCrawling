@@ -131,6 +131,7 @@ export async function createAdapterRuntime(
     imageHeaders: session.imageHeaders,
     allowHttpErrors: session.allowHttpErrors ?? false,
     pagination: adapter.pagination,
+    challenge: adapter.challenge,
     notes: session.notes ?? [],
   };
 }

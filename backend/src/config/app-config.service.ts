@@ -26,13 +26,40 @@ export class AppConfigService {
   /** 可选：出站代理地址，供站点适配器按需使用 */
   readonly proxyUrl?: string;
 
+  /** 运行时数据目录（人工验证 profile 等），默认仓库根目录 .data */
+  readonly dataRoot: string;
+
+  /** 人工验证使用的独立 Chrome profile 目录 */
+  readonly verificationProfileDir: string;
+
+  /** 单次人工验证的等待上限 */
+  readonly verificationTimeoutMs: number;
+
+  /** 验证 profile 的保留时长，超过后启动时清理 */
+  readonly verificationProfileTtlMs: number;
+
   constructor() {
     this.port = this.readPort();
     this.storageRoot = this.readStorageRoot();
+    this.dataRoot =
+      process.env.DATA_DIR?.trim() || path.resolve(__dirname, '../../../.data');
+    this.verificationProfileDir = path.join(
+      this.dataRoot,
+      'chrome-verification-profile',
+    );
+    this.verificationTimeoutMs = readPositiveInt(
+      process.env.VERIFICATION_TIMEOUT_MS,
+      5 * 60_000,
+    );
+    this.verificationProfileTtlMs = readPositiveInt(
+      process.env.VERIFICATION_PROFILE_TTL_MS,
+      7 * 24 * 60 * 60_000,
+    );
     this.chromePath = process.env.CHROME_PATH?.trim() || undefined;
     this.proxyUrl =
       readEnv('CRAWL_PROXY_URL', 'HTTPS_PROXY', 'HTTP_PROXY') || undefined;
     this.logger.log(`Storage root: ${this.storageRoot}`);
+    this.logger.log(`Data root: ${this.dataRoot}`);
     if (this.chromePath) {
       this.logger.log(`Chrome path: ${this.chromePath}`);
     }
@@ -62,4 +89,9 @@ function readEnv(...keys: string[]): string | undefined {
     if (value) return value;
   }
   return undefined;
+}
+
+function readPositiveInt(raw: string | undefined, fallback: number): number {
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }

@@ -34,11 +34,15 @@ src/
    - 适配器可通过 `pagination.nextPageUrl` / `buildPageUrl` 接管规则。
 4. 每页优先静态解析；失败则回退到 `HeadlessBrowserService`。浏览器按代理地址复用实例。
    - 适配器可声明 `waitForSelector`、`clickSelectors`（年龄门）、`scroll` 策略。
-5. 图片地址按页去重后交给 `ImageDownloaderService` 并发下载。
+   - 静态取页、无头取页、分页规划三条路径都会先过 `ChallengeDetector`：命中人机校验即挂起，转 `HumanVerificationService`。
+5. 人工验证：`POST /api/crawl/tasks/:taskId/verification` 拉起本机可见 Chrome（独立 profile、沿用任务代理与 UA），用户完成校验后沿用同一个浏览器上下文继续抓页，任务结束自动关闭窗口。
+   - 判定优先级：适配器 `challenge.detect`（`null` 表示明确不是挑战）→ 通用启发式（状态码 / 标题 / 页面标记）。
+   - 失败语义：超时 `CHALLENGE_TIMEOUT`、取消 `CRAWL_ABORTED`、窗口关闭或验证后仍被挑战 `CHALLENGE_FAILED`；单任务最多 3 次。
+6. 图片地址按页去重后交给 `ImageDownloaderService` 并发下载。
    - 校验文件头与 `content-type`，拒绝 HTML/JS 等非图片。
    - 文件名冲突自动追加后缀。
    - 适配器可补充 Referer 等下载请求头，并指定代理。
-6. 全程通过 `CrawlEvent` 推送进度；单页、单图失败不会中断任务。
+7. 全程通过 `CrawlEvent` 推送进度；单页、单图失败不会中断任务（挑战类错误除外）。
 
 ## 接口
 
@@ -50,6 +54,8 @@ src/
 | GET | `/api/crawl/options` |
 | GET | `/api/adapters` |
 | POST | `/api/crawl/stream` |
+| POST | `/api/crawl/tasks/:taskId/verification` |
+| DELETE | `/api/crawl/tasks/:taskId/verification` |
 | GET | `/api/images/groups` |
 | GET | `/api/images` |
 | GET | `/api/images/metadata` |
@@ -67,6 +73,9 @@ src/
 | `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退 `HTTPS_PROXY` / `HTTP_PROXY` |
 | `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理 |
 | `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
+| `DATA_DIR` | `<仓库>/.data` | 运行态数据目录（人工验证 profile），不写入仓库 |
+| `VERIFICATION_TIMEOUT_MS` | `300000` | 人工验证等待超时 |
+| `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 复用期限（默认 7 天） |
 
 ## 命令
 
@@ -84,3 +93,5 @@ pnpm --filter backend test
 - 新增接口统一使用 DTO 校验与 Swagger 装饰器，保持响应结构与文档同步。
 - 新增站点适配器只在 `crawl/adapters/` 下建文件并追加到 `REGISTERED_ADAPTERS`，不要在通用链路里写站点判断；敏感配置通过 `AdapterConfig.get()` 读环境变量。
 - 适配器契约的匹配、回退与注册顺序由 `src/crawl/adapters/adapters.spec.ts` 覆盖，改动契约时同步补断言。
+- 挑战判定与人工验证属于通用能力：新增站点差异只写 `adapter.challenge`，不要在 `CrawlService` 里按域名分支。
+- 验证窗口的 Cookie 只保留在内存和独立 profile 中：不写日志、不返回给前端、不提交到仓库（`.data/` 已忽略）。
