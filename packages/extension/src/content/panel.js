@@ -105,7 +105,12 @@ export class ImagePanel {
     this.formatSelect = shadow.querySelector('[data-filter="format"]');
 
     this.applyTheme();
-    this.unwatchTheme = watchTheme(() => this.applyTheme());
+    // 存储里的 theme 被其他界面改动时，要重新读一次再应用，
+    // 否则本地缓存的手动选择会盖掉新值
+    this.unwatchTheme = watchTheme(async () => {
+      this.themeMode = await getThemeMode();
+      this.applyTheme();
+    });
     void getThemeMode().then((mode) => {
       this.themeMode = mode;
       this.applyTheme();
