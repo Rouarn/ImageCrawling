@@ -16,7 +16,7 @@ import { CrawlAdvancedFields } from './crawl-advanced-fields';
 import { Panel } from '@/components/ui/panel';
 import { Badge } from '@/components/ui/badge';
 import { useSystemHealth } from '@/features/system/use-system-health';
-import { useCrawlTaskStore } from '@/stores/crawl-task-store';
+import { isTaskActive, useCrawlTaskStore } from '@/stores/crawl-task-store';
 
 type CrawlModeOption = 'auto' | 'pattern';
 
@@ -55,7 +55,7 @@ export function CrawlForm() {
   const { data: health } = useSystemHealth();
   const startTask = useCrawlTaskStore((state) => state.start);
   const status = useCrawlTaskStore((state) => state.status);
-  const running = status === 'running';
+  const running = isTaskActive(status);
   const [outDirTouched, setOutDirTouched] = useState(false);
   const [mode, setMode] = useState<CrawlModeOption>('auto');
   const [presetId, setPresetId] = useState('');

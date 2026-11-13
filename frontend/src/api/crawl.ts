@@ -5,10 +5,26 @@ import type {
   CrawlEvent,
   CrawlOptionsMeta,
   CrawlRequest,
+  VerificationOpenStatus,
 } from './contracts';
 
 export function fetchCrawlOptions(): Promise<CrawlOptionsMeta> {
   return api.get<CrawlOptionsMeta>('/crawl/options');
+}
+
+/** 打开本机人工验证窗口（独立 profile，沿用任务代理） */
+export async function openVerificationWindow(
+  taskId: string,
+): Promise<VerificationOpenStatus> {
+  const response = await api.post<{ status: VerificationOpenStatus }>(
+    `/crawl/tasks/${encodeURIComponent(taskId)}/verification`,
+  );
+  return response.status;
+}
+
+/** 取消等待中的人工验证 */
+export async function cancelVerificationWindow(taskId: string): Promise<void> {
+  await api.delete(`/crawl/tasks/${encodeURIComponent(taskId)}/verification`);
 }
 
 /** 站点适配器预设，仅用于表单自动填充，不影响未选择预设时的行为 */

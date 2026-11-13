@@ -55,6 +55,17 @@ export type CrawlLogLevel = 'info' | 'warn' | 'error';
 export type CrawlMode = 'auto' | 'pattern';
 export type FetchMode = 'static' | 'headless';
 
+export type ChallengeReason = 'http-403' | 'http-429' | 'challenge-page';
+export type ChallengeState =
+  | 'pending'
+  | 'resolved'
+  | 'cancelled'
+  | 'timeout'
+  | 'window-closed'
+  | 'failed';
+
+export type VerificationOpenStatus = 'opened' | 'already-open';
+
 export type CrawlEvent =
   | { type: 'start'; requestId: string; outDir: string; startedAt: string }
   | { type: 'log'; level: CrawlLogLevel; message: string }
@@ -72,6 +83,20 @@ export type CrawlEvent =
     }
   | { type: 'page-fallback'; index: number; url: string; reason: string }
   | { type: 'page-failed'; index: number; url: string; message: string }
+  | {
+      type: 'challenge';
+      taskId: string;
+      state: ChallengeState;
+      url: string;
+      verifyUrl: string;
+      reason: ChallengeReason;
+      status?: number;
+      title?: string;
+      matched: string[];
+      timeoutMs: number;
+      waitedMs: number;
+      message?: string;
+    }
   | { type: 'discover'; count: number; pages: number }
   | { type: 'download-start'; total: number }
   | {

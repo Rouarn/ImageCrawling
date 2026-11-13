@@ -15,7 +15,12 @@ import { Badge, type BadgeTone } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TaskMetrics } from './task-metrics';
 import { TaskLogList } from './task-log-list';
-import { useCrawlTaskStore, type TaskStatus } from '@/stores/crawl-task-store';
+import { ChallengeCard } from './challenge-card';
+import {
+  isTaskActive,
+  useCrawlTaskStore,
+  type TaskStatus,
+} from '@/stores/crawl-task-store';
 import { formatDuration } from '@/lib/format';
 
 const STATUS_META: Record<
@@ -24,6 +29,7 @@ const STATUS_META: Record<
 > = {
   idle: { label: '待命', tone: 'neutral', dot: true },
   running: { label: '运行中', tone: 'accent', dot: true, pulse: true },
+  verifying: { label: '等待人工验证', tone: 'warning', dot: true, pulse: true },
   completed: { label: '已完成', tone: 'success', dot: true },
   failed: { label: '失败', tone: 'danger', dot: true },
   cancelled: { label: '已取消', tone: 'warning', dot: true },
@@ -74,7 +80,7 @@ export function TaskConsole() {
     if (planPages > 0) {
       return Math.min(100, Math.round((completedPages / planPages) * 100));
     }
-    return status === 'running' ? 6 : 0;
+    return status === 'running' || status === 'verifying' ? 6 : 0;
   }, [downloadTotal, downloadDone, planPages, completedPages, status]);
 
   const progressLabel =
@@ -82,9 +88,11 @@ export function TaskConsole() {
       ? `${downloadDone}/${downloadTotal} 下载`
       : planPages > 0
         ? `${completedPages}/${planPages} 页`
-        : status === 'running'
-          ? '准备中'
-          : '—';
+        : status === 'verifying'
+          ? '等待验证'
+          : status === 'running'
+            ? '准备中'
+            : '—';
 
   return (
     <Panel
@@ -96,7 +104,7 @@ export function TaskConsole() {
           <Badge tone={meta.tone} dot pulse={meta.pulse}>
             {meta.label}
           </Badge>
-          {status === 'running' ? (
+          {isTaskActive(status) ? (
             <Button
               size="small"
               danger
@@ -167,6 +175,8 @@ export function TaskConsole() {
             </span>
           </div>
 
+          {status === 'verifying' && <ChallengeCard />}
+
           {status === 'running' && currentPage && (
             <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-muted px-3 py-2 text-xs text-ink-soft">
               <LoadingOutlined spin className="text-accent" />
@@ -208,7 +218,7 @@ export function TaskConsole() {
             </div>
           )}
 
-          <TaskLogList logs={logs} running={status === 'running'} />
+          <TaskLogList logs={logs} running={isTaskActive(status)} />
         </>
       )}
     </Panel>

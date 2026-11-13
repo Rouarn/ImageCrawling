@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn';
 import { formatCount, formatRelativeTime } from '@/lib/format';
 import { useImageGroups } from '@/features/library/queries';
 import { useSystemHealth } from '@/features/system/use-system-health';
-import { useCrawlTaskStore } from '@/stores/crawl-task-store';
+import { isTaskActive, useCrawlTaskStore } from '@/stores/crawl-task-store';
 
 const NAV_ITEMS = [
   { to: '/', label: '抓取任务', icon: <ThunderboltOutlined />, end: true },
@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
-  const isRunning = useCrawlTaskStore((state) => state.status === 'running');
+  const isRunning = useCrawlTaskStore((state) => isTaskActive(state.status));
   const { data: groupData } = useImageGroups();
   const { data: health, isError } = useSystemHealth();
 

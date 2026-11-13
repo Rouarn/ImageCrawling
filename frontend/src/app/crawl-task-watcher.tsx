@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { notify } from '@/lib/notify';
-import { useCrawlTaskStore, type TaskStatus } from '@/stores/crawl-task-store';
+import {
+  isTaskActive,
+  useCrawlTaskStore,
+  type TaskStatus,
+} from '@/stores/crawl-task-store';
 import { imageQueryKeys } from '@/features/library/queries';
 
 /**
@@ -17,7 +21,7 @@ export function CrawlTaskWatcher(): null {
   const previousSaved = useRef(saved);
 
   useEffect(() => {
-    const wasRunning = previousStatus.current === 'running';
+    const wasRunning = isTaskActive(previousStatus.current);
     const lastSaved = previousSaved.current;
 
     if (wasRunning && status === 'completed') {

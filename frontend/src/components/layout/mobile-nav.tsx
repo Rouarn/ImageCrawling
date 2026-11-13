@@ -7,7 +7,7 @@ import { NavLink } from 'react-router-dom';
 import { Brand } from './brand';
 import { ThemeToggle } from './theme-toggle';
 import { cn } from '@/lib/cn';
-import { useCrawlTaskStore } from '@/stores/crawl-task-store';
+import { isTaskActive, useCrawlTaskStore } from '@/stores/crawl-task-store';
 
 const NAV_ITEMS = [
   { to: '/', label: '抓取任务', icon: <ThunderboltOutlined />, end: true },
@@ -35,7 +35,7 @@ export function MobileHeader() {
 }
 
 export function MobileTabBar() {
-  const isRunning = useCrawlTaskStore((state) => state.status === 'running');
+  const isRunning = useCrawlTaskStore((state) => isTaskActive(state.status));
 
   return (
     <nav

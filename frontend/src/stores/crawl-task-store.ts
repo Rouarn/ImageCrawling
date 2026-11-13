@@ -1,10 +1,47 @@
 import { create } from 'zustand';
 import { toApiError } from '@/api/client';
-import { streamCrawl } from '@/api/crawl';
-import type { CrawlEvent, CrawlLogLevel, CrawlRequest } from '@/api/contracts';
+import {
+  cancelVerificationWindow,
+  openVerificationWindow,
+  streamCrawl,
+} from '@/api/crawl';
+import type {
+  ChallengeReason,
+  ChallengeState,
+  CrawlEvent,
+  CrawlLogLevel,
+  CrawlRequest,
+} from '@/api/contracts';
 import { formatClockTime, formatDuration } from '@/lib/format';
 
-export type TaskStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type TaskStatus =
+  | 'idle'
+  | 'running'
+  | 'verifying'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+/** 进行中的任务（含等待人工验证） */
+export function isTaskActive(status: TaskStatus): boolean {
+  return status === 'running' || status === 'verifying';
+}
+
+export interface ChallengeInfo {
+  taskId: string;
+  state: ChallengeState;
+  url: string;
+  verifyUrl: string;
+  reason: ChallengeReason;
+  status?: number;
+  title?: string;
+  matched: string[];
+  timeoutMs: number;
+  waitedMs: number;
+  message?: string;
+  /** 前端收到事件的时间，用于计算已等待时长 */
+  receivedAt: number;
+}
 
 export interface TaskLogEntry {
   id: number;
@@ -15,6 +52,7 @@ export interface TaskLogEntry {
 
 interface TaskState {
   status: TaskStatus;
+  taskId: string | null;
   request: CrawlRequest | null;
   outDir: string | null;
   logs: TaskLogEntry[];
@@ -29,8 +67,13 @@ interface TaskState {
   durationMs: number | null;
   error: { code: string; message: string } | null;
   headless: boolean;
+  challenge: ChallengeInfo | null;
+  verificationOpened: boolean;
+  verificationBusy: boolean;
   start: (request: CrawlRequest) => void;
   cancel: () => void;
+  openVerification: () => Promise<void>;
+  cancelVerification: () => Promise<void>;
   reset: () => void;
 }
 
@@ -41,6 +84,7 @@ let logSequence = 0;
 
 const IDLE_STATE = {
   status: 'idle' as TaskStatus,
+  taskId: null,
   request: null,
   outDir: null,
   logs: [] as TaskLogEntry[],
@@ -55,6 +99,9 @@ const IDLE_STATE = {
   durationMs: null,
   error: null,
   headless: false,
+  challenge: null,
+  verificationOpened: false,
+  verificationBusy: false,
 };
 
 function createLog(level: CrawlLogLevel, message: string): TaskLogEntry {
@@ -94,7 +141,7 @@ export const useCrawlTaskStore = create<TaskState>((set, get) => ({
 
       switch (event.type) {
         case 'start':
-          set({ outDir: event.outDir });
+          set({ outDir: event.outDir, taskId: event.requestId });
           break;
         case 'log':
           set({ logs: pushLog(state.logs, event.level, event.message) });
@@ -152,6 +199,66 @@ export const useCrawlTaskStore = create<TaskState>((set, get) => ({
             ),
           });
           break;
+        case 'challenge': {
+          const info: ChallengeInfo = {
+            taskId: event.taskId,
+            state: event.state,
+            url: event.url,
+            verifyUrl: event.verifyUrl,
+            reason: event.reason,
+            status: event.status,
+            title: event.title,
+            matched: event.matched,
+            timeoutMs: event.timeoutMs,
+            waitedMs: event.waitedMs,
+            message: event.message,
+            receivedAt: Date.now(),
+          };
+
+          if (event.state === 'pending') {
+            set({
+              status: 'verifying',
+              challenge: info,
+              verificationOpened: false,
+              currentPage: null,
+              logs: pushLog(
+                state.logs,
+                'warn',
+                `命中人机校验（${event.matched.join(', ')}），任务已挂起等待人工验证`,
+              ),
+            });
+          } else if (event.state === 'resolved') {
+            set({
+              status: 'running',
+              challenge: null,
+              verificationOpened: false,
+              logs: pushLog(
+                state.logs,
+                'info',
+                '人工验证已通过，继续抓取',
+              ),
+            });
+          } else {
+            const cancelled = event.state === 'cancelled';
+            const message = event.message ?? '人工验证未完成';
+            set({
+              status: cancelled ? 'cancelled' : 'failed',
+              challenge: info,
+              currentPage: null,
+              error: cancelled
+                ? { code: 'CRAWL_ABORTED', message }
+                : {
+                    code:
+                      event.state === 'timeout'
+                        ? 'CHALLENGE_TIMEOUT'
+                        : 'CHALLENGE_FAILED',
+                    message,
+                  },
+              logs: pushLog(state.logs, cancelled ? 'warn' : 'error', message),
+            });
+          }
+          break;
+        }
         case 'discover':
           set({
             discovered: event.count,
@@ -212,6 +319,15 @@ export const useCrawlTaskStore = create<TaskState>((set, get) => ({
           set({ status: 'cancelled', currentPage: null });
         } else if (get().status === 'running') {
           set({ status: 'completed', currentPage: null });
+        } else if (get().status === 'verifying') {
+          set({
+            status: 'failed',
+            currentPage: null,
+            error: {
+              code: 'CHALLENGE_FAILED',
+              message: '连接在等待人工验证时中断',
+            },
+          });
         }
       } catch (error) {
         if (current.signal.aborted) {
@@ -241,12 +357,60 @@ export const useCrawlTaskStore = create<TaskState>((set, get) => ({
     set((state) => ({
       status: 'cancelled',
       currentPage: null,
+      challenge: null,
       logs: pushLog(state.logs, 'warn', '已取消当前任务'),
     }));
   },
 
+  openVerification: async () => {
+    const { taskId, status } = get();
+    if (!taskId || status !== 'verifying') return;
+    set({ verificationBusy: true });
+    try {
+      const result = await openVerificationWindow(taskId);
+      set((state) => ({
+        verificationOpened: true,
+        logs: pushLog(
+          state.logs,
+          'info',
+          result === 'already-open'
+            ? '验证窗口已在运行'
+            : '已打开验证窗口，请在弹出的浏览器中完成校验',
+        ),
+      }));
+    } catch (error) {
+      const apiError = toApiError(error);
+      set((state) => ({
+        logs: pushLog(
+          state.logs,
+          'error',
+          `打开验证窗口失败：${apiError.message}`,
+        ),
+      }));
+    } finally {
+      set({ verificationBusy: false });
+    }
+  },
+
+  cancelVerification: async () => {
+    const { taskId } = get();
+    if (!taskId) return;
+    try {
+      await cancelVerificationWindow(taskId);
+    } catch (error) {
+      const apiError = toApiError(error);
+      set((state) => ({
+        logs: pushLog(
+          state.logs,
+          'error',
+          `取消人工验证失败：${apiError.message}`,
+        ),
+      }));
+    }
+  },
+
   reset: () => {
-    if (get().status === 'running') {
+    if (isTaskActive(get().status)) {
       controller?.abort();
     }
     set({ ...IDLE_STATE });
@@ -254,5 +418,5 @@ export const useCrawlTaskStore = create<TaskState>((set, get) => ({
 }));
 
 export function selectIsTaskRunning(state: TaskState): boolean {
-  return state.status === 'running';
+  return isTaskActive(state.status);
 }
