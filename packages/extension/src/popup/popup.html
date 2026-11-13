@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/png" href="icons/icon-32.png" />
+    <link rel="stylesheet" href="theme.css" />
     <title>图片抓取器</title>
     <style>
       html,
@@ -12,13 +13,12 @@
         height: 100%;
         min-height: 600px;
         overflow: hidden;
-        background: #f4f4f7;
-      }
-      @media (prefers-color-scheme: dark) {
-        html,
-        body {
-          background: #08090c;
-        }
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        color-scheme: light dark;
       }
       #app {
         display: flex;

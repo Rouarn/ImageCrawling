@@ -1,7 +1,14 @@
 import { ImagePanel } from '../content/panel.js';
+import { watchTheme, getThemeMode, applyTheme } from '../shared/theme.js';
 
 let tabId = null;
 let refreshTimer = null;
+
+void (async () => {
+  const mode = await getThemeMode();
+  applyTheme(document.documentElement, mode);
+  watchTheme(async () => applyTheme(document.documentElement, await getThemeMode()));
+})();
 
 const panel = new ImagePanel({
   mode: 'popup',

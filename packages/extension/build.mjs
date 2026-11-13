@@ -1,7 +1,12 @@
 import { build } from 'esbuild';
-import { copyFileSync, cpSync, rmSync, watch as watchFiles } from 'node:fs';
+import { copyFileSync, cpSync, rmSync, watch as watchFiles, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DARK_TOKENS,
+  LIGHT_TOKENS,
+  tokenDeclarations,
+} from './src/shared/theme.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const src = path.join(root, 'src');
@@ -51,6 +56,24 @@ function copyStatic() {
   }
 }
 
+/** 从 theme.js 生成全局主题样式，popup / options 直接引用 */
+function writeThemeCss() {
+  const css = `/* 由 build.mjs 从 src/shared/theme.js 生成，请勿手改 */
+:root {
+${tokenDeclarations(LIGHT_TOKENS)}
+}
+:root[data-theme="dark"] {
+${tokenDeclarations(DARK_TOKENS)}
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+${tokenDeclarations(DARK_TOKENS)}
+  }
+}
+`;
+  writeFileSync(path.join(dist, 'theme.css'), css);
+}
+
 /**
  * esbuild 的 BuildFailure 带 errors 数组，逐条打印文件、行列和出错行；
  * 其他异常退化为 message，保证 watch 下报错可读且不中断。
@@ -87,6 +110,7 @@ async function initialBuild() {
   rmSync(dist, { recursive: true, force: true });
   await bundleAll({ quiet: false });
   copyStatic();
+  writeThemeCss();
   log(`\n扩展已构建: ${path.relative(process.cwd(), dist)}`);
   log('在 chrome://extensions 中「加载已解压的扩展程序」，选择该目录。');
 }
@@ -113,6 +137,7 @@ function startWatch() {
     try {
       await bundleAll({ quiet: true });
       copyStatic();
+      writeThemeCss();
       log(`[watch] ${files} → 重建完成（${Date.now() - startedAt}ms）`);
     } catch (error) {
       log(`[watch] 构建失败（继续监听，修复后自动重建）：\n${formatBuildError(error)}`);

@@ -1,5 +1,12 @@
 import { PANEL_CSS } from '../shared/styles.js';
 import { escapeAttr, escapeHtml } from '../shared/util.js';
+import { getPrefs } from '../shared/settings.js';
+import {
+  applyTheme,
+  getThemeMode,
+  setThemeMode,
+  watchTheme,
+} from '../shared/theme.js';
 
 const MIN_SIZE_OPTIONS = [
   { value: 0, label: '全部尺寸' },
@@ -61,10 +68,14 @@ export class ImagePanel {
     this.feedback = null;
     this.open = mode === 'popup';
     this.root = null;
-    this.darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    this.host = null;
+    this.themeMode = 'system';
+    this.groupMode = 'title';
+    this.unwatchTheme = null;
   }
 
   mount(host) {
+    this.host = host;
     const shadow = host.attachShadow({ mode: 'open' });
     try {
       const sheet = new CSSStyleSheet();
@@ -94,7 +105,21 @@ export class ImagePanel {
     this.formatSelect = shadow.querySelector('[data-filter="format"]');
 
     this.applyTheme();
-    this.darkQuery.addEventListener('change', () => this.applyTheme());
+    this.unwatchTheme = watchTheme(() => this.applyTheme());
+    void getThemeMode().then((mode) => {
+      this.themeMode = mode;
+      this.applyTheme();
+    });
+    void getPrefs().then((prefs) => {
+      this.minSize = prefs.minSize;
+      this.format = prefs.format;
+      this.groupMode = prefs.groupMode;
+      this.groupTouched = false;
+      this.groupInitialized = false;
+      this.syncGrid();
+      this.syncCount();
+      this.applyGroupDefault();
+    });
 
     this.root.addEventListener('click', (event) => this.handleClick(event));
     this.root.addEventListener('change', (event) => this.handleChange(event));
@@ -120,7 +145,11 @@ export class ImagePanel {
     const closeAction =
       this.mode === 'overlay'
         ? '<button type="button" class="ic-icon" data-act="close" aria-label="收起面板">×</button>'
-        : '<span class="ic-badge">POPUP</span>';
+        : `<div class="ic-theme" role="group" aria-label="外观主题">
+            <button type="button" data-act="theme" data-theme-mode="system" aria-pressed="false">自动</button>
+            <button type="button" data-act="theme" data-theme-mode="light" aria-pressed="false">浅色</button>
+            <button type="button" data-act="theme" data-theme-mode="dark" aria-pressed="false">深色</button>
+          </div>`;
 
     return `
 <div class="ic-root" data-mode="${this.mode}">
@@ -189,14 +218,7 @@ export class ImagePanel {
     for (const id of [...this.selected]) {
       if (!ids.has(id)) this.selected.delete(id);
     }
-    if (!this.groupTouched) {
-      const next = this.meta.groupDefault || 'images';
-      if (next !== this.group || !this.groupInitialized) {
-        this.group = next;
-        this.groupInput.value = next;
-        this.groupInitialized = true;
-      }
-    }
+    if (!this.groupTouched) this.applyGroupDefault();
     this.syncHeader();
     this.syncGroupPreview();
     this.syncGrid();
@@ -230,7 +252,32 @@ export class ImagePanel {
   /* ---------------- 渲染 ---------------- */
 
   applyTheme() {
-    this.root.classList.toggle('is-dark', this.darkQuery.matches);
+    if (!this.host) return;
+    applyTheme(this.host, this.themeMode);
+    this.syncThemeButtons();
+  }
+
+  syncThemeButtons() {
+    const buttons = this.root?.querySelectorAll('[data-act="theme"]') ?? [];
+    for (const button of buttons) {
+      const active = button.getAttribute('data-theme-mode') === this.themeMode;
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  }
+
+  /** 按设置页的「分组名规则」套用默认分组（用户手动改过就不再覆盖） */
+  applyGroupDefault() {
+    if (this.groupTouched) return;
+    const fallback =
+      this.groupMode === 'domain'
+        ? this.meta.domain
+        : this.meta.groupDefault || this.meta.title;
+    const next = fallback || this.meta.domain || 'images';
+    if (next === this.group && this.groupInitialized) return;
+    this.group = next;
+    this.groupInput.value = next;
+    this.groupInitialized = true;
+    this.syncGroupPreview();
   }
 
   syncHeader() {
@@ -450,10 +497,19 @@ export class ImagePanel {
       case 'settings':
         this.actions.openSettings?.();
         return;
+      case 'theme': {
+        const mode = actionEl.getAttribute('data-theme-mode');
+        if (!mode) return;
+        this.themeMode = mode;
+        this.applyTheme();
+        void setThemeMode(mode);
+        return;
+      }
       case 'reset-filter':
         this.minSize = 0;
         this.format = 'all';
         this.syncGrid();
+        this.syncToolbar();
         return;
       case 'select-all':
         for (const item of this.filteredItems()) this.selected.add(item.id);

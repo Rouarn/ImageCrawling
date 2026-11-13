@@ -59,6 +59,14 @@ IMPORT_TOKEN=用 openssl rand -hex 24 生成的令牌
 
 两种入口的选择、筛选状态互相独立，采集结果是同一份。
 
+## 外观与偏好
+
+- 主题三档：跟随系统（默认）、浅色、深色。弹窗头部有紧凑切换控件，设置页「外观」分组有完整说明；选择写入 `chrome.storage.local` 的 `theme`，重开或刷新后保持。
+- 手动选定浅/深后不再跟随系统；选「跟随系统」时监听 `prefers-color-scheme`，系统切换即时生效。页内浮层、弹窗、设置页共用同一套 token 和同一存储值，切一处三处同步。
+- 采集偏好（最小尺寸、默认格式、分组名规则）在设置页修改后立即保存，下次打开面板作为默认值；面板内仍可临时调整。
+
+配色 token 只有一处：[packages/extension/src/shared/theme.js](../packages/extension/src/shared/theme.js)。构建时生成 `dist/theme.css` 给 popup / options 用，内容脚本从同一份 token 生成 shadow DOM 样式；组件样式里不出现硬编码色值。
+
 ## 采集覆盖
 
 | 来源 | 处理方式 |

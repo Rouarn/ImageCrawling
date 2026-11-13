@@ -5,6 +5,32 @@ export const DEFAULT_SETTINGS = {
   token: '',
 };
 
+/** 采集偏好：与设置页保持一致，面板初始化时套用 */
+export const DEFAULT_PREFS = {
+  minSize: 0,
+  format: 'all',
+  groupMode: 'title',
+};
+
+export const PREF_KEYS = Object.keys(DEFAULT_PREFS);
+
+export async function getPrefs() {
+  const stored = await chrome.storage.local.get(DEFAULT_PREFS);
+  return {
+    minSize: Number(stored.minSize) || 0,
+    format: typeof stored.format === 'string' ? stored.format : 'all',
+    groupMode: stored.groupMode === 'domain' ? 'domain' : 'title',
+  };
+}
+
+export async function savePrefs(prefs) {
+  await chrome.storage.local.set({
+    minSize: Number(prefs.minSize) || 0,
+    format: String(prefs.format ?? 'all'),
+    groupMode: prefs.groupMode === 'domain' ? 'domain' : 'title',
+  });
+}
+
 /** 读取扩展设置（chrome.storage.local，令牌不进入同步空间） */
 export async function getSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);

@@ -4,228 +4,327 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="icons/icon-32.png" />
+    <link rel="stylesheet" href="theme.css" />
     <title>图片抓取器 · 设置</title>
     <style>
-      :root {
-        --canvas: #f4f4f7;
-        --surface: #ffffff;
-        --surface-muted: #f8f8fb;
-        --surface-inset: #eceef3;
-        --line: rgba(17, 20, 28, 0.08);
-        --line-strong: rgba(17, 20, 28, 0.16);
-        --ink: #14161c;
-        --ink-soft: #5f6673;
-        --ink-faint: #98a0ad;
-        --accent: #5a5cf0;
-        --accent-strong: #4648d8;
-        --success: #15803d;
-        --danger: #dc2626;
-        --font: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
-          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-        color-scheme: light;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --canvas: #08090c;
-          --surface: #111318;
-          --surface-muted: #15181e;
-          --surface-inset: #1c2029;
-          --line: rgba(255, 255, 255, 0.08);
-          --line-strong: rgba(255, 255, 255, 0.16);
-          --ink: #eceef4;
-          --ink-soft: #a2a9b6;
-          --ink-faint: #6f7683;
-          --accent: #8b8dff;
-          --accent-strong: #a9abff;
-          --success: #4ade80;
-          --danger: #f87171;
-          color-scheme: dark;
-        }
-      }
-      * {
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
+      }
+      html {
+        color-scheme: light dark;
       }
       body {
         margin: 0;
-        padding: 32px 20px 48px;
+        padding: 36px 20px 56px;
         background: var(--canvas);
         color: var(--ink);
-        font-family: var(--font);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
         font-size: 13px;
-        line-height: 1.6;
+        line-height: 1.5;
+        letter-spacing: -0.005em;
         -webkit-font-smoothing: antialiased;
       }
       main {
         max-width: 640px;
         margin: 0 auto;
       }
-      h1 {
-        margin: 0 0 4px;
-        font-size: 20px;
+      .page-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 4px 22px;
+      }
+      .page-head img {
+        border-radius: 9px;
+        flex: 0 0 auto;
+      }
+      .page-head h1 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 600;
         letter-spacing: -0.02em;
       }
-      .lead {
-        margin: 0 0 20px;
-        color: var(--ink-soft);
+      .page-head .lead {
+        margin: 2px 0 0;
         font-size: 12px;
+        color: var(--ink-faint);
+      }
+      .page-head .save-state {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--ink-faint);
+        opacity: 0;
+        transition: opacity 0.18s ease;
+      }
+      .page-head .save-state.is-visible {
+        opacity: 1;
       }
       .card {
         background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 20px 22px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 2px rgba(16, 20, 30, 0.04),
-          0 18px 40px -28px rgba(16, 20, 30, 0.35);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        box-shadow: var(--shadow-panel);
       }
       .card h2 {
-        margin: 0 0 14px;
+        margin: 0;
         font-size: 13px;
         font-weight: 600;
+        letter-spacing: -0.01em;
       }
-      label {
-        display: block;
-        font-size: 11px;
-        color: var(--ink-soft);
-        margin-bottom: 12px;
+      .card > p {
+        margin: 3px 0 14px;
+        font-size: 11.5px;
+        color: var(--ink-faint);
       }
-      label span {
-        display: block;
-        margin-bottom: 5px;
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 0;
       }
-      input {
-        width: 100%;
-        font: inherit;
+      .row + .row {
+        border-top: 1px solid var(--line);
+      }
+      .row label,
+      .row .label {
+        flex: 0 0 84px;
         font-size: 12px;
-        color: var(--ink);
-        background: var(--surface);
-        border: 1px solid var(--line-strong);
-        border-radius: 9px;
-        padding: 9px 11px;
-        outline: none;
+        color: var(--ink-soft);
       }
-      input:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(90, 92, 240, 0.12);
+      .row input,
+      .row select {
+        flex: 1 1 auto;
+        min-width: 0;
+        appearance: none;
+        border: 1px solid var(--control-border);
+        border-radius: 8px;
+        background: var(--control);
+        color: var(--ink);
+        font-family: inherit;
+        font-size: 12px;
+        padding: 7px 10px;
+        box-shadow: var(--shadow-control);
+      }
+      .row input:focus-visible,
+      .row select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+        border-color: transparent;
       }
       .hint {
-        margin: -6px 0 14px;
-        font-size: 10px;
+        margin: 2px 0 0 96px;
+        font-size: 11px;
         color: var(--ink-faint);
       }
       .actions {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-top: 6px;
-        flex-wrap: wrap;
+        margin: 14px 0 0 96px;
       }
-      button {
-        font: inherit;
+      .btn {
+        appearance: none;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-family: inherit;
         font-size: 12px;
         font-weight: 500;
-        padding: 8px 14px;
-        border-radius: 9px;
-        border: 1px solid transparent;
+        padding: 7px 14px;
         cursor: pointer;
+        transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
       }
-      #save {
-        background: var(--accent);
-        color: #fff;
+      .btn:active {
+        transform: translateY(1px);
       }
-      #save:hover {
-        background: var(--accent-strong);
+      .btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
-      #test {
-        background: transparent;
+      .btn-ghost {
+        background: var(--control);
         color: var(--ink);
-        border-color: var(--line-strong);
+        border-color: var(--control-border);
+        box-shadow: var(--shadow-control);
       }
-      #test:hover {
+      .btn-ghost:hover {
         border-color: var(--ink-faint);
       }
-      #status {
-        font-size: 11px;
-        color: var(--ink-soft);
+      .status {
+        font-size: 11.5px;
+        color: var(--ink-faint);
+        min-height: 16px;
       }
-      #status.ok {
+      .status.is-ok {
         color: var(--success);
       }
-      #status.bad {
+      .status.is-bad {
         color: var(--danger);
       }
-      pre {
-        margin: 8px 0;
-        padding: 10px 12px;
-        border-radius: 9px;
-        background: var(--surface-inset);
-        overflow: auto;
-        font-size: 11px;
-        line-height: 1.6;
+      .segmented {
+        display: inline-flex;
+        gap: 1px;
+        padding: 2px;
+        background: var(--segment);
+        border-radius: 8px;
+      }
+      .segmented button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .segmented button[aria-checked="true"],
+      .segmented button[aria-pressed="true"] {
+        background: var(--segment-active);
+        color: var(--ink);
+        box-shadow: var(--shadow-control);
+      }
+      .segmented button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .segmented--wide {
+        display: flex;
+      }
+      .segmented--wide button {
+        flex: 1;
+        justify-content: center;
       }
       ol {
-        margin: 8px 0 0;
+        margin: 10px 0 0;
         padding-left: 20px;
         font-size: 12px;
         color: var(--ink-soft);
+      }
+      ol li + li {
+        margin-top: 4px;
+      }
+      pre {
+        margin: 10px 0 0;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: var(--surface-inset);
+        color: var(--ink);
+        overflow: auto;
+        font-family: "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.6;
       }
       code {
         background: var(--surface-inset);
         border-radius: 4px;
         padding: 1px 4px;
+        font-family: "SF Mono", Menlo, monospace;
         font-size: 11px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>图片抓取器 · 设置</h1>
-      <p class="lead">配置本机后端地址与导入令牌；令牌只保存在本机浏览器。</p>
+      <header class="page-head">
+        <img src="icons/icon-48.png" width="38" height="38" alt="" />
+        <div>
+          <h1>图片抓取器</h1>
+          <p class="lead">配置后端连接、采集偏好与外观；修改会自动保存。</p>
+        </div>
+        <span id="saveState" class="save-state" role="status" aria-live="polite"></span>
+      </header>
 
-      <section class="card">
-        <h2>后端连接</h2>
-        <label>
-          <span>后端地址</span>
-          <input id="backendUrl" placeholder="http://127.0.0.1:5678" />
-        </label>
-        <p class="hint">默认与 <code>pnpm dev-mac</code> 的后端端口一致。</p>
-
-        <label>
-          <span>导入令牌</span>
-          <input id="token" type="password" placeholder="与后端 IMPORT_TOKEN 一致" />
-        </label>
-        <p class="hint">
-          后端只监听本机，导入接口同时要求这个令牌；未配置令牌时后端会返回 503。
-        </p>
-
+      <section class="card" aria-labelledby="conn-title">
+        <h2 id="conn-title">连接</h2>
+        <p>后端只监听本机回环地址，导入接口需要与后端一致的令牌。</p>
+        <div class="row">
+          <label for="backendUrl">后端地址</label>
+          <input id="backendUrl" type="url" inputmode="url" spellcheck="false"
+            placeholder="http://127.0.0.1:5678" aria-describedby="backendHint" />
+        </div>
+        <p id="backendHint" class="hint">默认与 <code>pnpm dev-mac</code> 的后端端口一致。</p>
+        <div class="row">
+          <label for="token">导入令牌</label>
+          <input id="token" type="password" autocomplete="off" spellcheck="false"
+            placeholder="与后端 IMPORT_TOKEN 一致" aria-describedby="tokenHint" />
+        </div>
+        <p id="tokenHint" class="hint">令牌只保存在本机浏览器，不进入同步存储。</p>
         <div class="actions">
-          <button id="save" type="button">保存</button>
-          <button id="test" type="button">测试连接</button>
-          <span id="status"></span>
+          <button id="test" class="btn btn-ghost" type="button">测试连接</button>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
         </div>
       </section>
 
-      <section class="card">
-        <h2>后端需要的一次性配置</h2>
-        <ol>
-          <li>在仓库根目录执行 <code>cp packages/backend/.env.example packages/backend/.env</code></li>
-          <li>生成一个随机令牌：<code>openssl rand -hex 24</code></li>
-          <li>写入 <code>packages/backend/.env</code>，然后重启后端：</li>
-        </ol>
-        <pre>IMPORT_TOKEN=这里填生成的令牌</pre>
-        <p class="hint">
-          把同一个令牌填到上面的输入框并保存。后端默认只监听
-          <code>127.0.0.1</code>，扩展通过本机回环地址访问。
-        </p>
+      <section class="card" aria-labelledby="pref-title">
+        <h2 id="pref-title">采集偏好</h2>
+        <p>打开采集面板时的默认筛选与分组名规则，面板内仍可临时调整。</p>
+        <div class="row">
+          <label for="minSize">最小尺寸</label>
+          <select id="minSize">
+            <option value="0">全部尺寸</option>
+            <option value="400">≥ 400px</option>
+            <option value="800">≥ 800px</option>
+            <option value="1200">≥ 1200px</option>
+            <option value="1600">≥ 1600px</option>
+            <option value="2000">≥ 2000px</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="format">默认格式</label>
+          <select id="format">
+            <option value="all">全部格式</option>
+            <option value="jpg">JPG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WebP</option>
+            <option value="gif">GIF</option>
+            <option value="avif">AVIF</option>
+            <option value="svg">SVG</option>
+            <option value="other">其它</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="label" id="groupModeLabel">分组名规则</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="groupModeLabel">
+            <button type="button" role="radio" data-group-mode="title" aria-checked="true">页面标题</button>
+            <button type="button" role="radio" data-group-mode="domain" aria-checked="false">域名</button>
+          </div>
+        </div>
+        <p class="hint">页面标题为空时自动退回域名。</p>
       </section>
 
-      <section class="card">
-        <h2>使用方式</h2>
+      <section class="card" aria-labelledby="theme-title">
+        <h2 id="theme-title">外观</h2>
+        <p>默认跟随系统；手动选择后不会被系统切换覆盖。</p>
+        <div class="segmented segmented--wide" role="radiogroup" aria-labelledby="theme-title">
+          <button type="button" role="radio" data-theme-mode="system" aria-checked="true">跟随系统</button>
+          <button type="button" role="radio" data-theme-mode="light" aria-checked="false">浅色</button>
+          <button type="button" role="radio" data-theme-mode="dark" aria-checked="false">深色</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="help-title">
+        <h2 id="help-title">后端一次性配置</h2>
+        <p>只需在仓库根目录配置一次，然后重启后端。</p>
         <ol>
-          <li>打开图片页面，等图片渲染出来（扩展不代为滚动或点击）。</li>
-          <li>点右下角「发现 N 张」胶囊，或点浏览器工具栏里的扩展图标。</li>
-          <li>勾选图片、填写分组名，点「存入图片库」；也可以「下载到磁盘」。</li>
+          <li>复制示例配置：<code>cp packages/backend/.env.example packages/backend/.env</code></li>
+          <li>生成随机令牌：<code>openssl rand -hex 24</code></li>
+          <li>写入 <code>packages/backend/.env</code> 并重启后端：</li>
         </ol>
+        <pre>IMPORT_TOKEN=这里填生成的令牌</pre>
       </section>
     </main>
     <script src="options.js"></script>
