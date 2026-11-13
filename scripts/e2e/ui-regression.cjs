@@ -111,6 +111,27 @@ async function cardTitles(page) {
     );
     await sleep(600);
 
+    const toastText = await page
+      .waitForFunction(
+        () => {
+          const nodes = [
+            ...document.querySelectorAll('.ant-message-notice-content'),
+          ];
+          return (
+            nodes.map((node) => node.innerText).find((text) => text.includes('抓取完成')) ||
+            false
+          );
+        },
+        { timeout: 5000 },
+      )
+      .then((handle) => handle.jsonValue())
+      .catch(() => '');
+    check(
+      '完成提示显示总数',
+      toastText.includes('成功 3 张') && toastText.includes('失败 0 张'),
+      `toast=${JSON.stringify(toastText)}`,
+    );
+
     const consoleText = await page.evaluate(() => {
       const panel = [...document.querySelectorAll('section')].find((node) =>
         node.innerText.includes('任务控制台'),
