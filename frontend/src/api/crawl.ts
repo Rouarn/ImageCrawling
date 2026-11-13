@@ -1,36 +1,61 @@
-import request from './request';
+import { api, readErrorResponse } from './client';
+import type {
+  CrawlEvent,
+  CrawlOptionsMeta,
+  CrawlRequest,
+} from './contracts';
 
-export interface CrawlOptions {
-  /** 目标网站 URL */
-  url: string;
-  /** 输出目录，默认为 'images' */
-  outDir?: string;
-  /** 最大抓取页数 */
-  maxPages?: number;
-  /** 并发下载数 */
-  concurrency?: number;
-  /** 页面抓取延迟（毫秒） */
-  pageDelayMs?: number;
-  /** 页面 URL 模式，例如 'page-{page}.html' */
-  pagePattern?: string;
-  /** 起始页码 */
-  startPage?: number;
-  /** 结束页码 */
-  endPage?: number;
-  /** 是否使用无头浏览器模式 */
-  useHeadless?: boolean;
-  /** 自定义请求头 (JSON 字符串) */
-  headers?: string;
+export function fetchCrawlOptions(): Promise<CrawlOptionsMeta> {
+  return api.get<CrawlOptionsMeta>('/crawl/options');
 }
 
 /**
- * 启动抓取任务
- * @param data 抓取配置选项
+ * 通过 fetch + ReadableStream 消费 SSE，支持 AbortController 取消。
  */
-export const startCrawl = (data: CrawlOptions) => request.post('/crawl', data);
+export async function streamCrawl(
+  request: CrawlRequest,
+  onEvent: (event: CrawlEvent) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  const response = await fetch('/api/crawl/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(request),
+    signal,
+  });
 
-/**
- * 获取已抓取的图片列表
- * @param params 可选的查询参数
- */
-export const getImages = (params?: { filter?: string; dir?: string }) => request.get<{ groups: { dir: string; files: string[] }[]; total: number; files?: string[] }>('/images', { params }) as unknown as Promise<{ groups: { dir: string; files: string[] }[]; total: number; files?: string[] }>;
+  if (!response.ok || !response.body) {
+    throw await readErrorResponse(response);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() ?? '';
+
+      for (const frame of frames) {
+        const dataLine = frame
+          .split('\n')
+          .find((line) => line.startsWith('data:'));
+        if (!dataLine) continue;
+        const payload = dataLine.slice(5).trim();
+        if (!payload) continue;
+        try {
+          onEvent(JSON.parse(payload) as CrawlEvent);
+        } catch {
+          // 忽略无法解析的帧
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}

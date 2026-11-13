@@ -1,54 +1,144 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --primary-color: #1677ff;
+  --canvas: #f4f4f7;
+  --surface: #ffffff;
+  --surface-muted: #f8f8fb;
+  --surface-inset: #eceef3;
+  --line: rgba(17, 20, 28, 0.08);
+  --line-strong: rgba(17, 20, 28, 0.16);
+  --ink: #14161c;
+  --ink-soft: #5f6673;
+  --ink-faint: #98a0ad;
+  --accent: #5a5cf0;
+  --accent-strong: #4648d8;
+  --accent-soft: rgba(90, 92, 240, 0.1);
+  --success: #15803d;
+  --success-soft: rgba(21, 128, 61, 0.1);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --elevation-card: 0 1px 2px rgba(16, 20, 30, 0.04), 0 18px 40px -28px rgba(16, 20, 30, 0.35);
+  --font-family: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color-scheme: light;
 }
 
-/* Reset or global styles can go here */
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.dark {
+  --canvas: #08090c;
+  --surface: #111318;
+  --surface-muted: #15181e;
+  --surface-inset: #1c2029;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --ink: #eceef4;
+  --ink-soft: #a2a9b6;
+  --ink-faint: #6f7683;
+  --accent: #8b8dff;
+  --accent-strong: #a9abff;
+  --accent-soft: rgba(139, 141, 255, 0.14);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --elevation-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 24px 56px -32px rgba(0, 0, 0, 0.9);
+  color-scheme: dark;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-inset: var(--surface-inset);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-family);
+  --shadow-card: var(--elevation-card);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+@layer base {
+  * {
+    border-color: var(--line);
+  }
 
-::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
-  border-radius: 3px;
-}
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(107, 114, 128, 0.8); /* gray-500 with opacity */
-}
+  body {
+    margin: 0;
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-family);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 
-/* Dark mode scrollbar */
-@media (prefers-color-scheme: dark) {
+  ::selection {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
   ::-webkit-scrollbar-thumb {
-    background-color: rgba(75, 85, 99, 0.5); /* gray-600 */
+    background-color: var(--line-strong);
+    border-radius: 999px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(107, 114, 128, 0.8); /* gray-500 */
+    background-color: var(--ink-faint);
   }
 }
 
-/* Manual dark class support (since we use 'class' strategy for Tailwind) */
-.dark ::-webkit-scrollbar-thumb {
-  background-color: rgba(75, 85, 99, 0.6);
-}
+@layer components {
+  .app-canvas {
+    background-image:
+      radial-gradient(900px circle at 12% -10%, var(--accent-soft), transparent 55%),
+      radial-gradient(700px circle at 100% 0%, rgba(167, 139, 250, 0.1), transparent 50%);
+    background-repeat: no-repeat;
+  }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.8);
+  .surface-card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--elevation-card);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }
