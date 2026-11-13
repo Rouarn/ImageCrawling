@@ -6,6 +6,9 @@ button, input, select { font-family: inherit; }
 [hidden] { display: none !important; }
 
 .ic-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   --canvas: #f4f4f7;
   --surface: #ffffff;
   --surface-muted: #f8f8fb;
@@ -62,6 +65,8 @@ button, input, select { font-family: inherit; }
 .ic-root ::-webkit-scrollbar-track { background: transparent; }
 .ic-root ::-webkit-scrollbar-thumb { background-color: var(--line-strong); border-radius: 999px; }
 
+.ic-root[data-mode="popup"] { height: 100%; }
+
 /* ---------- 胶囊 ---------- */
 .ic-pill {
   position: fixed; right: 18px; bottom: 18px; z-index: 2147483647;
@@ -80,7 +85,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 面板 ---------- */
 .ic-panel {
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column; overflow: hidden; min-height: 0;
   background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
   box-shadow: 0 30px 70px -32px rgba(16, 20, 30, 0.55), 0 2px 10px rgba(16, 20, 30, 0.08);
   color: var(--ink);
@@ -91,12 +96,16 @@ button, input, select { font-family: inherit; }
   height: min(660px, calc(100vh - 96px));
   animation: ic-panel-in 0.18s ease;
 }
-.ic-panel--popup { width: 100%; height: 100%; border-radius: 0; border: 0; box-shadow: none; }
+.ic-panel--popup {
+  flex: 1 1 auto; width: 100%; height: 100%; min-height: 600px;
+  border-radius: 0; border: 0; box-shadow: none;
+}
 @keyframes ic-panel-in {
   from { opacity: 0; transform: translateY(9px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
 .ic-head {
+  flex: 0 0 auto;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 15px 18px 12px; border-bottom: 1px solid var(--line);
 }
@@ -124,6 +133,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 工具栏 ---------- */
 .ic-toolbar {
+  flex: 0 0 auto;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
   padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--surface-muted);
 }
@@ -145,10 +155,11 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 网格 ---------- */
 .ic-grid {
-  flex: 1; min-height: 90px; overflow: auto; padding: 12px 16px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-rows: max-content; gap: 9px; align-content: start;
 }
+.ic-grid.is-empty { grid-auto-rows: 1fr; align-content: stretch; }
 .ic-panel--popup .ic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px 12px; gap: 8px; }
 .ic-thumb {
   position: relative; display: block; padding: 0; aspect-ratio: 3 / 4; overflow: hidden;
@@ -185,7 +196,7 @@ button, input, select { font-family: inherit; }
   color: #fff; background: rgba(10, 12, 18, 0.5); padding: 2px 4px; border-radius: 4px;
 }
 .ic-empty {
-  grid-column: 1 / -1; min-height: 210px; display: flex; flex-direction: column;
+  grid-column: 1 / -1; min-height: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 5px; text-align: center;
   padding: 22px; color: var(--ink-soft);
 }
@@ -202,6 +213,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 反馈 ---------- */
 .ic-feedback {
+  flex: 0 0 auto;
   margin: 0 16px 10px; padding: 10px 12px; border-radius: 11px;
   border: 1px solid var(--line); font-size: 10px; line-height: 1.55;
 }
@@ -234,6 +246,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 底部 ---------- */
 .ic-foot {
+  flex: 0 0 auto;
   display: flex; flex-direction: column; gap: 9px;
   padding: 11px 16px 13px; border-top: 1px solid var(--line); background: var(--surface);
 }

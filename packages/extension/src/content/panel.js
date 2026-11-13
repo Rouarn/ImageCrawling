@@ -273,6 +273,7 @@ export class ImagePanel {
   syncGrid() {
     const top = this.grid.scrollTop;
     const list = this.filteredItems();
+    this.grid.classList.toggle('is-empty', list.length === 0);
     this.grid.innerHTML =
       list.length > 0
         ? list.map((item) => this.thumbHtml(item)).join('')
