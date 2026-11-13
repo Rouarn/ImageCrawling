@@ -65,17 +65,27 @@ src/
 
 ## 配置
 
+启动时自动加载 `backend/.env`（`src/config/env-loader.ts` 在 `main.ts` 中最先引入），优先级为：真实进程环境变量 > `backend/.env` > 代码默认值。
+
+```bash
+cp backend/.env.example backend/.env   # 按需填写，重启后端生效
+```
+
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `PORT` | `3000` | 监听端口 |
 | `STORAGE_DIR` | `<仓库>/storage` | 存储根目录 |
+| `DATA_DIR` | `<仓库>/.data` | 运行态数据目录（人工验证 profile），已忽略 |
+| `NODE_ENV` | 空 | `production` 时静态资源缓存 7 天 |
 | `CHROME_PATH` | 空 | 无头模式使用的 Chrome 路径（优先于自动探测） |
-| `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退 `HTTPS_PROXY` / `HTTP_PROXY` |
-| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理 |
-| `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
-| `DATA_DIR` | `<仓库>/.data` | 运行态数据目录（人工验证 profile），不写入仓库 |
 | `VERIFICATION_TIMEOUT_MS` | `300000` | 人工验证等待超时 |
 | `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 复用期限（默认 7 天） |
+| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理（使用该站点时必须设置其一） |
+| `CRAWL_PROXY_URL` | 空 | 通用出站代理 |
+| `HTTPS_PROXY` / `HTTP_PROXY` | 空 | 系统代理回退 |
+| `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie（可选） |
+
+完整注释与占位示例见 [`.env.example`](.env.example)。启动日志只报告代理/Cookie 是否已配置，不输出具体值；`backend/.env` 已在 `.gitignore` 中。
 
 ## 命令
 

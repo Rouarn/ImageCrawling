@@ -29,3 +29,7 @@ storage
 
 # 运行时数据（人工验证 profile 等），不进入仓库
 .data
+
+# 本地环境变量：只提交 .env.example，真实 .env 含代理与 Cookie，不进仓库
+backend/.env
+frontend/.env.local

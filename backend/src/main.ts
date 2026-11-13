@@ -1,3 +1,5 @@
+// 必须最先执行：加载 backend/.env，且进程环境变量优先
+import './config/env-loader';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';

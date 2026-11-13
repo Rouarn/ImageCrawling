@@ -297,16 +297,7 @@ export class HumanVerificationService implements OnModuleInit, OnModuleDestroy {
       resolveUserAgent(pending.options.headers) ?? DEFAULT_USER_AGENT;
     await page.setUserAgent(userAgent);
 
-    try {
-      await page.goto(pending.session.verifyUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: WINDOW_GOTO_TIMEOUT_MS,
-      });
-    } catch (error) {
-      // 挑战页可能一直不完成 load，交给后续轮询判断
-      this.logger.warn(`验证窗口首次加载未完成：${errorMessage(error)}`);
-    }
-
+    // 先返回给前端再导航：挑战页可能长时间不触发 domcontentloaded，不能阻塞“打开窗口”请求
     this.logger.log('人工验证窗口已打开');
 
     void this.pollWindow(
@@ -318,6 +309,16 @@ export class HumanVerificationService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`验证窗口轮询异常：${errorMessage(error)}`);
       pending.session.fail('验证窗口异常结束');
     });
+
+    void page
+      .goto(pending.session.verifyUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: WINDOW_GOTO_TIMEOUT_MS,
+      })
+      .catch((error: unknown) => {
+        // 挑战页可能一直不完成 load，交给轮询按 Cookie / 内容判定
+        this.logger.warn(`验证窗口首次加载未完成：${errorMessage(error)}`);
+      });
   }
 
   private async pollWindow(

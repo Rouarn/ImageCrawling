@@ -26,12 +26,12 @@ export const girlAtlasAdapter: SiteAdapter = {
   preset: {
     entryUrl: 'https://www.girl-atlas.com/',
     requires: [
-      '可用的 HTTP 代理：设置 GIRL_ATLAS_PROXY 或 CRAWL_PROXY_URL（形如 http://127.0.0.1:7897）',
-      '本机 Chrome（无头模式，用于通过 Cloudflare 校验）',
+      '可用的 HTTP 代理：复制 backend/.env.example 为 backend/.env，填写 GIRL_ATLAS_PROXY 或 CRAWL_PROXY_URL',
+      '本机 Chrome：无头模式用于通过 Cloudflare 校验，校验未通过时会打开独立窗口等待人工完成',
     ],
     notes: [
       '站点在 Cloudflare 人机校验之后，静态请求只会拿到挑战页，请保持无头模式开启。',
-      '如需登录态，可通过 GIRL_ATLAS_COOKIE 注入 Cookie。',
+      '如需登录态，在 backend/.env 中填写 GIRL_ATLAS_COOKIE；留空即以访客身份访问。',
     ],
     options: { useHeadless: true, maxPages: 3 },
   },
@@ -86,13 +86,15 @@ export const girlAtlasAdapter: SiteAdapter = {
     const notes: string[] = [];
     if (!proxyUrl) {
       notes.push(
-        '未配置代理（GIRL_ATLAS_PROXY / CRAWL_PROXY_URL），该站点在本机 DNS 解析被污染，预计无法访问。',
+        '未配置代理（GIRL_ATLAS_PROXY / CRAWL_PROXY_URL），该站点在本机 DNS 解析被污染，预计无法访问。请在 backend/.env 中填写后重启后端。',
       );
     } else {
       log('info', `Girl Atlas：使用代理 ${maskProxy(proxyUrl)}`);
     }
     if (!cookie) {
-      notes.push('未配置 GIRL_ATLAS_COOKIE，将尝试以访客身份通过年龄门。');
+      notes.push(
+        '未配置 GIRL_ATLAS_COOKIE（见 backend/.env.example），将尝试以访客身份通过年龄门。',
+      );
     }
 
     log('info', `Girl Atlas：入口地址 ${entryUrl}`);

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as path from 'node:path';
+import { envFileExists, envFilePath } from './env-loader';
 
 /**
  * 集中管理运行时配置，所有环境变量的读取都收敛在这里。
@@ -25,6 +26,9 @@ export class AppConfigService {
 
   /** 可选：出站代理地址，供站点适配器按需使用 */
   readonly proxyUrl?: string;
+
+  /** 代理地址来自哪个环境变量（仅用于日志，不输出地址本身） */
+  readonly proxySource?: string;
 
   /** 运行时数据目录（人工验证 profile 等），默认仓库根目录 .data */
   readonly dataRoot: string;
@@ -56,13 +60,42 @@ export class AppConfigService {
       7 * 24 * 60 * 60_000,
     );
     this.chromePath = process.env.CHROME_PATH?.trim() || undefined;
-    this.proxyUrl =
-      readEnv('CRAWL_PROXY_URL', 'HTTPS_PROXY', 'HTTP_PROXY') || undefined;
+    const proxy = readEnvWithKey(
+      'CRAWL_PROXY_URL',
+      'HTTPS_PROXY',
+      'HTTP_PROXY',
+    );
+    this.proxyUrl = proxy?.value;
+    this.proxySource = proxy?.key;
+    const girlAtlasProxy = this.getEnv('GIRL_ATLAS_PROXY');
     this.logger.log(`Storage root: ${this.storageRoot}`);
     this.logger.log(`Data root: ${this.dataRoot}`);
+    this.logger.log(
+      envFileExists
+        ? `配置文件：已加载 ${envFilePath}（进程环境变量优先）`
+        : `配置文件：未找到 ${envFilePath}（可选，可复制 .env.example 后填写）`,
+    );
     if (this.chromePath) {
       this.logger.log(`Chrome path: ${this.chromePath}`);
     }
+    // 只报告是否启用，绝不输出代理地址与 Cookie 内容
+    this.logger.log(
+      this.proxyUrl
+        ? `出站代理：已启用（来自 ${this.proxySource}）`
+        : '出站代理：未配置（CRAWL_PROXY_URL / HTTPS_PROXY / HTTP_PROXY 均为空）',
+    );
+    this.logger.log(
+      girlAtlasProxy
+        ? 'Girl Atlas 专用代理：已配置（来自 GIRL_ATLAS_PROXY）'
+        : `Girl Atlas 专用代理：未配置（${
+            this.proxyUrl ? '回退使用出站代理' : '该站点将无法访问'
+          }）`,
+    );
+    this.logger.log(
+      this.getEnv('GIRL_ATLAS_COOKIE')
+        ? 'Girl Atlas Cookie：已配置'
+        : 'Girl Atlas Cookie：未配置',
+    );
   }
 
   /** 适配器读取环境变量的统一入口，敏感配置不落到源码 */
@@ -83,10 +116,13 @@ export class AppConfigService {
   }
 }
 
-function readEnv(...keys: string[]): string | undefined {
+/** 按顺序取第一个非空环境变量，同时返回来源变量名（用于日志，不暴露值） */
+function readEnvWithKey(
+  ...keys: string[]
+): { value: string; key: string } | undefined {
   for (const key of keys) {
     const value = process.env[key]?.trim();
-    if (value) return value;
+    if (value) return { value, key };
   }
   return undefined;
 }
