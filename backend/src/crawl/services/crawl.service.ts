@@ -18,7 +18,12 @@ import {
   ChallengeDetectedError,
   type ChallengeDetection,
 } from '../types/challenge';
-import { CrawlEvent, CrawlSummary, FetchMode } from '../types/crawl-event';
+import {
+  CrawlEvent,
+  CrawlSummary,
+  FailedImage,
+  FetchMode,
+} from '../types/crawl-event';
 import {
   resolveCrawlOptions,
   type ResolvedCrawlOptions,
@@ -112,9 +117,14 @@ export class CrawlService {
       log: (level, message) => emit({ type: 'log', level, message }),
       signal,
     });
+    const runtimeOptions = applyAdapterRuntime(resolved, runtime);
     const session: CrawlRunSession = {
       taskId: requestId,
-      options: applyAdapterRuntime(resolved, runtime),
+      options: {
+        ...runtimeOptions,
+        // 统一出站代理：适配器指定优先，其次显式配置 / 系统代理
+        proxyUrl: runtime.proxyUrl ?? this.config.proxyUrl,
+      },
       verifications: 0,
     };
 
@@ -183,7 +193,25 @@ export class CrawlService {
       session.options,
       signal,
       (progress) => emit({ type: 'download-progress', ...progress }),
+      (failure) =>
+        emit({
+          type: 'log',
+          level: 'error',
+          message: `下载失败 ${failure.url}：${failure.reason}`,
+        }),
+      // 已验证过的站点：复用浏览器会话取图，避免 cf_clearance 与指纹不匹配
+      this.verification.getVerifiedPage(session.taskId)
+        ? (url: string) => this.verification.fetchImage(session.taskId, url)
+        : undefined,
     );
+
+    if (failed.length > 0) {
+      emit({
+        type: 'log',
+        level: 'warn',
+        message: `下载失败原因汇总：${summarizeFailures(failed)}`,
+      });
+    }
 
     const summary: CrawlSummary = {
       discovered: list.length,
@@ -420,7 +448,7 @@ export class CrawlService {
     const fetched = await this.pageFetcher.fetchHtml(pageUrl, {
       headers: session.options.headers,
       timeoutMs: session.options.fetchTimeoutMs,
-      proxyUrl: session.options.adapter?.proxyUrl,
+      proxyUrl: session.options.proxyUrl ?? session.options.adapter?.proxyUrl,
       signal,
     });
     plan.htmlCache.set(pageUrl, fetched.html);
@@ -440,7 +468,7 @@ export class CrawlService {
     const fetched = await this.pageFetcher.fetchHtml(pageUrl, {
       headers: session.options.headers,
       timeoutMs: session.options.fetchTimeoutMs,
-      proxyUrl: session.options.adapter?.proxyUrl,
+      proxyUrl: session.options.proxyUrl ?? session.options.adapter?.proxyUrl,
       signal,
     });
     plan?.htmlCache.set(pageUrl, fetched.html);
@@ -533,6 +561,19 @@ export class CrawlService {
 function extractTitle(html: string): string | undefined {
   const match = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
   return match?.[1]?.trim() || undefined;
+}
+
+/** 把失败原因聚合成一行，便于判断是代理、鉴权还是防盗链问题 */
+function summarizeFailures(failed: FailedImage[]): string {
+  const counts = new Map<string, number>();
+  for (const item of failed) {
+    counts.set(item.reason, (counts.get(item.reason) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([reason, count]) => `${reason} × ${count}`)
+    .join('；');
 }
 
 function isChallengeError(error: unknown): boolean {

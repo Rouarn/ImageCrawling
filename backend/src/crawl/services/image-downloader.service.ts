@@ -7,7 +7,6 @@ import { ErrorCode } from '../../common/errors/error-code';
 import {
   combineSignals,
   createTimeoutSignal,
-  errorMessage,
   isAbortError,
 } from '../../common/utils/async.util';
 import { requestUrl } from '../../common/utils/http.util';
@@ -34,6 +33,49 @@ const EXT_ALIASES: Record<string, string> = {
   tif: 'tiff',
 };
 
+/** 通过已验证浏览器上下文取二进制内容（图片） */
+export type BinaryFetcher = (url: string) => Promise<{
+  status: number;
+  contentType: string;
+  buffer: Buffer;
+}>;
+
+/** 常见网络错误码的中文说明，方便直接看出是代理、DNS 还是鉴权问题 */
+const NETWORK_CODE_HINTS: Record<string, string> = {
+  ENOTFOUND: '域名解析失败',
+  EAI_AGAIN: 'DNS 解析暂时失败',
+  ECONNREFUSED: '连接被拒绝（代理未启动？）',
+  ECONNRESET: '连接被重置',
+  ETIMEDOUT: '连接超时',
+  UND_ERR_CONNECT_TIMEOUT: '连接超时',
+  UND_ERR_HEADERS_TIMEOUT: '等待响应头超时',
+  UND_ERR_BODY_TIMEOUT: '读取响应体超时',
+  CERT_HAS_EXPIRED: '证书已过期',
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: '证书校验失败',
+  DEPTH_ZERO_SELF_SIGNED_CERT: '证书不受信任',
+};
+
+/** 把下载异常转成可读原因，保留 HTTP 状态码与底层网络错误码 */
+export function describeFailure(error: unknown): string {
+  if (error instanceof AppException) return error.message;
+  if (
+    error instanceof Error &&
+    (error.name === 'AbortError' || error.name === 'TimeoutError')
+  ) {
+    return '请求超时或已被取消';
+  }
+
+  const base = error instanceof Error ? error.message : String(error);
+  const cause = (error as { cause?: unknown })?.cause as
+    | { code?: unknown }
+    | undefined;
+  const code = typeof cause?.code === 'string' ? cause.code : undefined;
+  if (!code) return base;
+
+  const hint = NETWORK_CODE_HINTS[code];
+  return `${base}（${code}${hint ? `，${hint}` : ''}）`;
+}
+
 @Injectable()
 export class ImageDownloaderService {
   private readonly logger = new Logger(ImageDownloaderService.name);
@@ -49,6 +91,8 @@ export class ImageDownloaderService {
     options: ResolvedCrawlOptions,
     signal: AbortSignal,
     onProgress: (progress: DownloadProgress) => void,
+    onFailure?: (failure: FailedImage) => void,
+    fetchBinary?: BinaryFetcher,
   ): Promise<{ saved: SavedImage[]; failed: FailedImage[] }> {
     const saved: SavedImage[] = [];
     const failed: FailedImage[] = [];
@@ -75,13 +119,16 @@ export class ImageDownloaderService {
             usedNames,
             options,
             signal,
+            fetchBinary,
           );
           saved.push(item);
           this.logger.verbose(`已保存 ${item.path}`);
         } catch (error) {
           if (isAbortError(error) && signal.aborted) return;
-          const reason = errorMessage(error);
-          failed.push({ url, reason });
+          const reason = describeFailure(error);
+          const failure = { url, reason };
+          failed.push(failure);
+          onFailure?.(failure);
           this.logger.warn(`下载失败 ${url}: ${reason}`);
         } finally {
           done += 1;
@@ -108,6 +155,7 @@ export class ImageDownloaderService {
     usedNames: Set<string>,
     options: ResolvedCrawlOptions,
     signal: AbortSignal,
+    fetchBinary?: BinaryFetcher,
   ): Promise<SavedImage> {
     if (url.startsWith('data:')) {
       return this.saveDataUrl(url, outDirAbsolute, usedNames);
@@ -118,6 +166,7 @@ export class ImageDownloaderService {
       usedNames,
       options,
       signal,
+      fetchBinary,
     );
   }
 
@@ -127,6 +176,7 @@ export class ImageDownloaderService {
     usedNames: Set<string>,
     options: ResolvedCrawlOptions,
     signal: AbortSignal,
+    fetchBinary?: BinaryFetcher,
   ): Promise<SavedImage> {
     const timeout = createTimeoutSignal(options.fetchTimeoutMs);
     const combined = combineSignals([signal, timeout.signal]);
@@ -135,29 +185,43 @@ export class ImageDownloaderService {
       const referer = this.resolveReferer(url, options);
       const adapterHeaders =
         options.adapter?.imageHeaders?.(url, referer) ?? {};
-      const response = await requestUrl(url, {
-        headers: {
-          ...buildImageHeaders(referer, options.headers),
-          ...adapterHeaders,
-        },
-        timeoutMs: options.fetchTimeoutMs,
-        proxyUrl: options.adapter?.proxyUrl,
-        signal: combined,
-      });
 
-      if (!response.ok) {
+      let status: number;
+      let statusText = '';
+      let rawContentType: string;
+      let buffer: Buffer;
+
+      if (fetchBinary) {
+        // 已验证的站点：复用浏览器会话，带着 cf_clearance 与真实指纹取图
+        const fetched = await fetchBinary(url);
+        status = fetched.status;
+        rawContentType = fetched.contentType;
+        buffer = fetched.buffer;
+      } else {
+        const response = await requestUrl(url, {
+          headers: {
+            ...buildImageHeaders(referer, options.headers),
+            ...adapterHeaders,
+          },
+          timeoutMs: options.fetchTimeoutMs,
+          proxyUrl: options.proxyUrl ?? options.adapter?.proxyUrl,
+          signal: combined,
+        });
+        status = response.status;
+        statusText = response.statusText;
+        rawContentType = response.headers.get('content-type') || '';
+        buffer = Buffer.from(await response.arrayBuffer());
+      }
+
+      if (status < 200 || status >= 300) {
         throw new AppException(
           ErrorCode.DOWNLOAD_FAILED,
-          `HTTP ${response.status} ${response.statusText}`,
+          `HTTP ${status}${statusText ? ` ${statusText}` : ''}`,
           HttpStatus.BAD_GATEWAY,
         );
       }
 
-      const contentType = (response.headers.get('content-type') || '')
-        .split(';')[0]
-        .trim()
-        .toLowerCase();
-      const buffer = Buffer.from(await response.arrayBuffer());
+      const contentType = rawContentType.split(';')[0].trim().toLowerCase();
       if (buffer.length === 0) {
         throw new AppException(
           ErrorCode.DOWNLOAD_FAILED,

@@ -131,6 +131,49 @@ export class HumanVerificationService implements OnModuleInit, OnModuleDestroy {
     return session.page;
   }
 
+  /**
+   * 用已验证的浏览器上下文拉取二进制内容（图片）。
+   *
+   * Cloudflare 的 cf_clearance 与浏览器指纹绑定，Node/undici 即使带上同样的
+   * Cookie 与 UA 也会被判定为爬虫（403）。图片下载必须复用通过验证的会话。
+   */
+  async fetchImage(
+    taskId: string,
+    url: string,
+  ): Promise<{ status: number; contentType: string; buffer: Buffer }> {
+    const session = this.sessions.get(taskId);
+    if (!session || !session.browser.connected) {
+      throw new AppException(
+        ErrorCode.CHALLENGE_FAILED,
+        '验证会话已结束，无法通过浏览器下载图片',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const result = await session.page.evaluate(async (target) => {
+      const response = await fetch(target, { credentials: 'include' });
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(
+          ...bytes.subarray(offset, offset + chunkSize),
+        );
+      }
+      return {
+        status: response.status,
+        contentType: response.headers.get('content-type') ?? '',
+        base64: btoa(binary),
+      };
+    }, url);
+
+    return {
+      status: result.status,
+      contentType: result.contentType,
+      buffer: Buffer.from(result.base64, 'base64'),
+    };
+  }
+
   /** 任务结束时释放验证浏览器 */
   async release(taskId: string): Promise<void> {
     const session = this.sessions.get(taskId);

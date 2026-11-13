@@ -57,6 +57,9 @@ async function cardTitles(page) {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
     defaultViewport: { width: 1440, height: 900 },
   });
+  await browser
+    .defaultBrowserContext()
+    .overridePermissions(BASE, ['clipboard-read', 'clipboard-write']);
   const page = await browser.newPage();
   const consoleErrors = [];
   page.on('console', (msg) => {
@@ -122,6 +125,23 @@ async function cardTitles(page) {
     check('日志包含下载开始', consoleText.includes('开始下载'));
     check('日志包含完成汇总', consoleText.includes('任务完成'));
     check('状态徽标为已完成', consoleText.includes('已完成'));
+
+    // ---- 复制全部日志（取 store 全量，而不是视口内的 DOM） ----
+    await page.evaluate(() => {
+      const button = [...document.querySelectorAll('button')].find((node) =>
+        node.innerText.includes('复制全部'),
+      );
+      button?.click();
+    });
+    await sleep(400);
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+    check(
+      '一键复制全部日志',
+      /^\[\d{2}:\d{2}:\d{2}\] INFO /m.test(clipboardText) &&
+        clipboardText.includes('任务完成') &&
+        clipboardText.split('\n').length >= 10,
+      `lines=${clipboardText.split('\n').length}`,
+    );
 
     // ---- 跳转图片库 ----
     await page.evaluate(() => {

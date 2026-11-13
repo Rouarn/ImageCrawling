@@ -27,6 +27,8 @@ export interface ResolvedCrawlOptions {
   endPage?: number;
   useHeadless: boolean;
   headers: Record<string, string>;
+  /** 出站代理：显式配置或系统代理，页面抓取与图片下载共用 */
+  proxyUrl?: string;
   /** 命中的站点适配器运行时配置，未命中时由默认适配器接管 */
   adapter?: AdapterRuntime;
 }

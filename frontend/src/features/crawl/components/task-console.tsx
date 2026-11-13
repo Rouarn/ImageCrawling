@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   BranchesOutlined,
   ClearOutlined,
+  CopyOutlined,
   ExperimentOutlined,
   LoadingOutlined,
   RadarChartOutlined,
@@ -22,6 +23,8 @@ import {
   type TaskStatus,
 } from '@/stores/crawl-task-store';
 import { formatDuration } from '@/lib/format';
+import { copyText } from '@/lib/clipboard';
+import { notify } from '@/lib/notify';
 
 const STATUS_META: Record<
   TaskStatus,
@@ -93,6 +96,23 @@ export function TaskConsole() {
           : status === 'running'
             ? '准备中'
             : '—';
+
+  const handleCopyLogs = async () => {
+    if (logs.length === 0) {
+      notify.info('暂无日志可复制');
+      return;
+    }
+    // 从 store 取全量日志（含已滚出视口的行），不使用 DOM 中可见的部分
+    const text = logs
+      .map((log) => `[${log.time}] ${log.level.toUpperCase()} ${log.message}`)
+      .join('\n');
+    try {
+      await copyText(text);
+      notify.success(`已复制全部日志（${logs.length} 条）`);
+    } catch {
+      notify.error('复制失败：浏览器拒绝了剪贴板访问');
+    }
+  };
 
   return (
     <Panel
@@ -217,6 +237,22 @@ export function TaskConsole() {
               </div>
             </div>
           )}
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-ink-soft">
+              任务日志
+              <span className="ml-1 text-ink-faint">（{logs.length} 条）</span>
+            </span>
+            <Button
+              size="small"
+              icon={<CopyOutlined />}
+              aria-label="复制全部日志"
+              title="复制全部日志（含已滚出视口的历史行）"
+              onClick={() => void handleCopyLogs()}
+            >
+              复制全部
+            </Button>
+          </div>
 
           <TaskLogList logs={logs} running={isTaskActive(status)} />
         </>

@@ -8,6 +8,7 @@
 - 并发下载：可配置并发数、页间延迟、请求超时与自定义请求头。
 - 无头渲染：基于 Puppeteer，可抓取 JS 渲染出的图片。
 - 实时进度：`POST /api/crawl/stream` 通过 SSE 推送结构化事件，支持随时取消。
+- 任务日志：面板可一键复制全部输出（时间 + 级别 + 内容，含已滚出视口的历史行）；下载失败会逐条记录 HTTP 状态码或网络错误码，并在结束时按原因汇总。
 - 图片库：分组统计、文件名搜索、名称/时间排序、服务端分页、灯箱预览、单张/批量删除。
 - 统一响应、错误码与请求 ID；Swagger 文档开箱即用。
 - 深色/浅色主题、桌面与窄屏响应式布局。
@@ -155,7 +156,7 @@ pnpm --filter backend exec puppeteer browsers install chrome
 - 代理、Cookie 等敏感或环境相关配置只从环境变量读取，不写进适配器源码。
 - 前端“站点预设”下拉数据来自 `GET /api/adapters`，选中后自动填入入口地址与建议参数，并提示该预设需要的额外条件；不选预设时不发送任何额外字段。
 
-`girl-atlas` 需要代理（`GIRL_ATLAS_PROXY` 或 `CRAWL_PROXY_URL`），可选 Cookie（`GIRL_ATLAS_COOKIE`）。把 [backend/.env.example](backend/.env.example) 复制为 `backend/.env` 后填写即可；变量含义见下方「环境变量总表」。
+`girl-atlas` 需要代理（`GIRL_ATLAS_PROXY` 或 `CRAWL_PROXY_URL`），可选 Cookie（`GIRL_ATLAS_COOKIE`）。未显式配置代理时，macOS 上会自动回退到系统代理（`scutil --proxy`），保证页面抓取与图片下载走同一出口；把 [backend/.env.example](backend/.env.example) 复制为 `backend/.env` 后填写即可；变量含义见下方「环境变量总表」。
 
 ### 人工验证（人机校验）
 
@@ -164,6 +165,7 @@ pnpm --filter backend exec puppeteer browsers install chrome
 - **判定**：403/429、标题命中 `Just a moment...` / `请稍候` / `安全验证` 等、页面含 `cf_chl_opt`、`challenge-platform`、`g-recaptcha` 等标记，任一命中即进入等待。判定集中在 `ChallengeDetector`，静态取页、无头取页、分页规划三条路径共用。
 - **窗口**：`POST /api/crawl/tasks/:taskId/verification` 在本机拉起正常窗口的 Chrome（`headless: false`），使用独立 profile（`DATA_DIR` 下的 `chrome-verification-profile`，默认 `.data/`，不写入仓库），沿用任务代理与 UA，打开目标地址。
 - **继续**：校验通过后沿用这个已通过校验的浏览器上下文继续抓页。实测把 `cf_clearance` 交给独立无头实例仍会被 Cloudflare 重新挑战，因此不做 Cookie 搬运，而是复用同一浏览器会话；任务结束时自动关闭窗口并释放 profile。
+- **图片下载**：验证过的站点同样复用该浏览器上下文取图。Cloudflare 的 `cf_clearance` 与浏览器指纹绑定，Node 的 HTTP 客户端即使带上同样的 Cookie/UA 也会被 403，必须走已验证会话；代理、Cookie、UA、Referer 与抓页链路保持一致。
 - **失败路径**：超过 `VERIFICATION_TIMEOUT_MS` → `CHALLENGE_TIMEOUT`；用户取消 → `CRAWL_ABORTED`；窗口被关闭 → `CHALLENGE_FAILED`；验证后仍是挑战页 → `CHALLENGE_FAILED`；同一任务最多触发 3 次验证。
 - **站点微调**：适配器可通过 `challenge.detect` / `challenge.successSelector` / `challenge.successCookies` / `challenge.verificationUrl` 覆盖或补充通用规则；`detect` 返回 `null` 表示明确不是挑战，返回 `undefined` 则交回通用规则。`girl-atlas` 声明了 `cf_clearance` 与验证入口首页。
 - **profile 过期**：启动时清理超过 `VERIFICATION_PROFILE_TTL_MS`（默认 7 天）未使用的 profile。`.data/chrome-verification-profile` 只是本机验证通过的浏览器配置，可安全删除（删后下次抓 girl-atlas 需要重新验证一次）。
@@ -257,8 +259,8 @@ cp frontend/.env.example frontend/.env    # 前端：开发服务器代理目标
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理，优先级最高；与下面两项至少设置一个 |
-| `CRAWL_PROXY_URL` | 空 | 通用出站代理（所有适配器可用） |
-| `HTTPS_PROXY` / `HTTP_PROXY` | 空 | 系统代理回退；一般由 shell 或代理软件设置，不必写进 `.env` |
+| `CRAWL_PROXY_URL` | 空 | 通用出站代理（所有适配器可用）；留空时在 macOS 上自动使用系统代理 |
+| `HTTPS_PROXY` / `HTTP_PROXY` | 空 | 进程级代理变量，优先级高于系统代理检测；一般由 shell 或代理软件设置，不必写进 `.env` |
 | `GIRL_ATLAS_COOKIE` | 空 | 登录态 / 年龄门 Cookie（`name=value; name2=value2`）；留空按访客访问 |
 
 代理格式统一为 `http://主机:端口`，需要认证时写 `http://用户名:密码@主机:端口`。代理与 Cookie 只在启动日志中报告“是否已配置”，不会打印具体值。

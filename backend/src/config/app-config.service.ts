@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as path from 'node:path';
+import { detectSystemProxy } from '../common/utils/system-proxy.util';
 import { envFileExists, envFilePath } from './env-loader';
 
 /**
@@ -65,8 +66,11 @@ export class AppConfigService {
       'HTTPS_PROXY',
       'HTTP_PROXY',
     );
-    this.proxyUrl = proxy?.value;
-    this.proxySource = proxy?.key;
+    // 没有显式配置时回退到系统代理：无头 Chrome 会走系统代理，Node 端不会
+    const systemProxy = proxy ? undefined : detectSystemProxy();
+    this.proxyUrl = proxy?.value ?? systemProxy;
+    this.proxySource =
+      proxy?.key ?? (systemProxy ? 'macOS 系统代理' : undefined);
     const girlAtlasProxy = this.getEnv('GIRL_ATLAS_PROXY');
     this.logger.log(`Storage root: ${this.storageRoot}`);
     this.logger.log(`Data root: ${this.dataRoot}`);
