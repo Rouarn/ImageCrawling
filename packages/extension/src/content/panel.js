@@ -175,8 +175,8 @@ export class ImagePanel {
     </header>
     <div class="ic-toolbar">
       <div class="ic-filters">
-        <label class="ic-field">最小尺寸
-          <select data-filter="min" aria-label="按最小宽度筛选">${minOptions}</select>
+        <label class="ic-field">最小长边
+          <select data-filter="min" aria-label="按最小长边筛选，取宽高中较大的一边">${minOptions}</select>
         </label>
         <label class="ic-field">格式
           <select data-filter="format" aria-label="按格式筛选">${formatOptions}</select>
@@ -391,8 +391,9 @@ export class ImagePanel {
 
   filteredItems() {
     return this.items.filter((item) => {
-      if (item.width > 0 && item.width < this.minSize) return false;
-      if (item.width === 0 && this.minSize > 0) return false;
+      const longEdge = Math.max(item.width || 0, item.height || 0);
+      if (longEdge === 0) return this.minSize === 0;
+      if (longEdge < this.minSize) return false;
       if (this.format === 'all') return true;
       if (this.format === 'other') return !KNOWN_FORMATS.has(item.format);
       return item.format === this.format;

@@ -273,8 +273,8 @@
         <h2 id="pref-title">采集偏好</h2>
         <p>打开采集面板时的默认筛选与分组名规则，面板内仍可临时调整。</p>
         <div class="row">
-          <label for="minSize">最小尺寸</label>
-          <select id="minSize">
+          <label for="minSize">最小长边</label>
+          <select id="minSize" aria-describedby="minSizeHint">
             <option value="0">全部尺寸</option>
             <option value="400">≥ 400px</option>
             <option value="800">≥ 800px</option>
@@ -283,6 +283,7 @@
             <option value="2000">≥ 2000px</option>
           </select>
         </div>
+        <p id="minSizeHint" class="hint">按长边筛选：取宽高中的较大一边，例如 600×900 的竖图长边为 900，选 ≥ 800 时保留。尺寸未知的图片暂不显示，读取完成后会自动回来。</p>
         <div class="row">
           <label for="format">默认格式</label>
           <select id="format">
@@ -303,7 +304,7 @@
             <button type="button" role="radio" data-group-mode="domain" aria-checked="false">域名</button>
           </div>
         </div>
-        <p class="hint">页面标题为空时自动退回域名。</p>
+        <p class="hint">分组名规则：页面标题为空时自动退回域名。</p>
       </section>
 
       <section class="card" aria-labelledby="theme-title">
