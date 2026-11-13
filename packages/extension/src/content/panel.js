@@ -191,7 +191,7 @@ export class ImagePanel {
       </div>
     </div>
     <div class="ic-grid" role="listbox" aria-multiselectable="true"></div>
-    <div class="ic-feedback" hidden></div>
+    <div class="ic-feedback" role="status" aria-live="polite" hidden></div>
     <footer class="ic-foot">
       <div class="ic-group-line">
         <label for="ic-group">分组名</label>
@@ -532,8 +532,12 @@ export class ImagePanel {
         return;
       case 'clear':
         this.selected.clear();
+        this.failures.clear();
+        this.feedback = null;
+        this.renderFeedback();
         this.syncGrid();
         this.syncCount();
+        this.syncButtons();
         return;
       case 'group-title':
         this.group = this.meta.title || this.meta.groupDefault || 'images';
