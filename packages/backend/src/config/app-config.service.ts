@@ -13,11 +13,20 @@ export class AppConfigService {
   /** HTTP 监听端口 */
   readonly port: number;
 
+  /** HTTP 监听地址，默认只监听本机回环地址 */
+  readonly host: string;
+
   /** 图片存储根目录（绝对路径） */
   readonly storageRoot: string;
 
   /** 单次请求体上限 */
   readonly bodyLimit = '256kb';
+
+  /** 扩展导入接口的单次请求体上限（图片原始字节） */
+  readonly importBodyLimit = '25mb';
+
+  /** 浏览器扩展导入令牌；未配置时导入接口禁用 */
+  readonly importToken?: string;
 
   /** 服务器版本号 */
   readonly version: string = process.env.npm_package_version ?? '0.0.1';
@@ -45,6 +54,8 @@ export class AppConfigService {
 
   constructor() {
     this.port = this.readPort();
+    this.host = process.env.HOST?.trim() || '127.0.0.1';
+    this.importToken = process.env.IMPORT_TOKEN?.trim() || undefined;
     this.storageRoot = this.readStorageRoot();
     this.dataRoot =
       process.env.DATA_DIR?.trim() ||
@@ -75,6 +86,12 @@ export class AppConfigService {
     const girlAtlasProxy = this.getEnv('GIRL_ATLAS_PROXY');
     this.logger.log(`Storage root: ${this.storageRoot}`);
     this.logger.log(`Data root: ${this.dataRoot}`);
+    this.logger.log(`Listening on: ${this.host}:${this.port}`);
+    this.logger.log(
+      this.importToken
+        ? '扩展导入令牌：已配置'
+        : '扩展导入令牌：未配置（IMPORT_TOKEN 为空，导入接口返回 503）',
+    );
     this.logger.log(
       envFileExists
         ? `配置文件：已加载 ${envFilePath}（进程环境变量优先）`

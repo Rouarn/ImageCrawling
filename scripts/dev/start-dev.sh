@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BACKEND_PORT=5678
-FRONTEND_API_TARGET="http://localhost:$BACKEND_PORT"
+FRONTEND_API_TARGET="http://127.0.0.1:$BACKEND_PORT"
 
 echo "=========================================="
 echo "Backend Port: $BACKEND_PORT"
@@ -10,7 +10,7 @@ echo "=========================================="
 
 BACKEND_CMD="cd packages/backend && PORT=$BACKEND_PORT pnpm start:dev"
 
-FRONTEND_CMD="wait-on tcp:$BACKEND_PORT && cd packages/frontend && VITE_API_TARGET=$FRONTEND_API_TARGET pnpm dev"
+FRONTEND_CMD="wait-on tcp:127.0.0.1:$BACKEND_PORT && cd packages/frontend && VITE_API_TARGET=$FRONTEND_API_TARGET pnpm dev"
 
 echo "Starting services in parallel..."
 

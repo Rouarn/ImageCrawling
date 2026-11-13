@@ -32,10 +32,49 @@
 | GET | `/api/images` | 分页图片列表（`group` / `page` / `pageSize` / `q` / `sort`） |
 | GET | `/api/images/metadata?path=` | 单张图片元信息（含宽高） |
 | DELETE | `/api/images` | 批量删除，body 为 `{ "paths": [] }` |
+| GET | `/api/import/status` | 校验扩展配置（需令牌，只接受本机） |
+| POST | `/api/import/image?group=&name=&sourceUrl=` | 导入单张图片（原始字节，需令牌） |
 | GET | `/api/docs` | Swagger UI |
 | GET | `/api/docs-json` | OpenAPI JSON |
 
 静态图片资源挂在 `/media/` 下，对应存储根目录 `data/library/`；开发环境不缓存，`NODE_ENV=production` 时缓存 7 天。
+
+## 扩展导入
+
+浏览器扩展使用两个接口，都要求 Header `x-import-token` 与后端 `IMPORT_TOKEN` 一致，并且只接受本机回环请求。
+
+`GET /api/import/status`：校验地址与令牌，成功返回存储根目录。
+
+`POST /api/import/image?group=<分组>&name=<原始文件名>&sourceUrl=<来源页面>`：
+
+- 请求体是图片原始字节，`Content-Type` 用 `image/*` 或 `application/octet-stream`，单次上限 25MB。
+- `group` 必填，按输出目录规则校验（见下文 `outDir`）。
+- 后端按文件头识别真实类型，不信任 URL 扩展名。
+- 计算内容 SHA-256，在目标分组内去重：命中已有文件时返回 `duplicate: true`，不再写入。
+- 文件名格式 `<hash前16位>-<安全原名>.<真实扩展名>`，写入 `data/library/<分组>/`。
+
+```bash
+curl -X POST 'http://127.0.0.1:5678/api/import/image?group=demo&name=photo.jpg' \
+  -H 'x-import-token: your-token' \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @photo.jpg
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "saved": true,
+    "duplicate": false,
+    "path": "demo/1f2e3d4c5b6a7988-photo.jpg",
+    "url": "/media/demo/1f2e3d4c5b6a7988-photo.jpg",
+    "size": 123456,
+    "hash": "..."
+  }
+}
+```
+
+去重范围是单个分组：同一张图在同一分组只保留一份，不同分组可以各自保存。扩展的采集与上传细节见[浏览器扩展](extension.md)。
 
 ## 抓取请求
 
@@ -111,6 +150,10 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 | `CHALLENGE_TIMEOUT` | 人工验证超时 |
 | `CHALLENGE_FAILED` | 验证窗口关闭、启动失败或验证后仍是挑战页 |
 | `CHALLENGE_NOT_PENDING` | 当前任务没有等待中的人工验证 |
+| `IMPORT_DISABLED` | 后端未配置 `IMPORT_TOKEN`，导入接口返回 503 |
+| `IMPORT_UNAUTHORIZED` | 导入令牌缺失或不匹配（401） |
+| `IMPORT_FORBIDDEN` | 导入接口被非本机请求访问（403） |
+| `IMPORT_INVALID_IMAGE` | 请求体为空、不是可识别的图片，或 Content-Type 不允许（400 / 415） |
 | `CRAWL_ABORTED` | 任务被取消 |
 | `NOT_FOUND` | 路由不存在 |
 | `INTERNAL_ERROR` | 未捕获异常 |
@@ -118,6 +161,7 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 ## 相关文档
 
 - [架构与分层](architecture.md)
+- [浏览器扩展](extension.md)
 - [站点适配器](adapters.md)
 - [代理与人工验证](proxy-and-verification.md)
 - [测试与 E2E](testing.md)

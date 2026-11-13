@@ -1,0 +1,14 @@
+{
+  "name": "extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "图片抓取器 Chrome 扩展（MV3，本地加载）",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

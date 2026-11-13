@@ -124,6 +124,12 @@ importers:
         specifier: ^8.20.0
         version: 8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
+  packages/extension:
+    devDependencies:
+      esbuild:
+        specifier: ^0.27.2
+        version: 0.27.2
+
   packages/frontend:
     dependencies:
       '@ant-design/cssinjs':
@@ -6990,7 +6996,6 @@ snapshots:
       '@esbuild/win32-arm64': 0.27.2
       '@esbuild/win32-ia32': 0.27.2
       '@esbuild/win32-x64': 0.27.2
-    optional: true
 
   escalade@3.2.0: {}
 

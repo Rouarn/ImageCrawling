@@ -1,6 +1,6 @@
 # 配置环境变量
 $BackendPort = 5678
-$FrontendApiTarget = "http://localhost:$BackendPort"
+$FrontendApiTarget = "http://127.0.0.1:$BackendPort"
 
 Write-Host "=========================================="
 Write-Host "Backend Port: $BackendPort"
@@ -13,7 +13,7 @@ $BackendCmd = "cd packages/backend && set PORT=$BackendPort && pnpm start:dev"
 
 # 2. 前端: 等待后端端口就绪，设置 API 目标并启动
 # 注意: 需要先安装 wait-on: pnpm add -D -w wait-on
-$FrontendCmd = "wait-on tcp:$BackendPort && cd packages/frontend && set VITE_API_TARGET=$FrontendApiTarget && pnpm dev"
+$FrontendCmd = "wait-on tcp:127.0.0.1:$BackendPort && cd packages/frontend && set VITE_API_TARGET=$FrontendApiTarget && pnpm dev"
 
 # 使用 concurrently 并行运行 (在当前终端显示输出)
 # 需要先安装 concurrently: pnpm add -D -w concurrently

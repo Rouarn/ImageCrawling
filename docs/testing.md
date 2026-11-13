@@ -56,10 +56,32 @@ pnpm e2e:girl-atlas     # 人机验证流程（需要后端已配置可用代理
 
 `pnpm e2e:girl-atlas` 断言提示卡出现 → 打开验证窗口 → 任务继续并完成。该用例依赖外部站点与可用代理，失败时先检查后端启动日志中的代理状态。
 
+## 浏览器扩展回归
+
+```bash
+pnpm extension:build
+
+# 另开终端，用固定令牌启动后端
+IMPORT_TOKEN=e2e-token PORT=5678 pnpm --filter backend start
+
+pnpm e2e:extension
+```
+
+脚本会加载 `packages/extension/dist/`：优先通过 CDP 的 `Extensions.loadUnpacked` 加载（正式版 Chrome 137+ 已忽略 `--load-extension`），不支持时回退到 `--load-extension`（Edge 等 Chromium 系浏览器），也可用 `E2E_BROWSER_PATH` 指定浏览器。它会启动本地 fixture 页面，把采集结果存入 `data/library/_e2e-extension`，覆盖：
+
+- 普通 `img`、`srcset`、懒加载 `data-src`、`picture`、内联背景、样式表背景，以及 800ms 后插入的图片；
+- 最小尺寸筛选、全选计数；
+- 7 个 URL 按内容哈希只写入 3 个文件；
+- 图片库接口能看到新分组；
+- 第二次保存全部命中重复，文件数不变。
+
+结束时会删除 `_e2e-extension` 目录；截图默认写到系统临时目录，可用 `E2E_SHOT_DIR` 指定。
+
 ## 相关文档
 
 - [架构与分层](architecture.md)
 - [API 契约](api.md)
+- [浏览器扩展](extension.md)
 - [站点适配器](adapters.md)
 - [代理与人工验证](proxy-and-verification.md)
 - [部署](deployment.md)

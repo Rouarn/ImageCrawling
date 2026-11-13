@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>图片抓取器 · 设置</title>
+    <style>
+      :root {
+        --canvas: #f4f4f7;
+        --surface: #ffffff;
+        --surface-muted: #f8f8fb;
+        --surface-inset: #eceef3;
+        --line: rgba(17, 20, 28, 0.08);
+        --line-strong: rgba(17, 20, 28, 0.16);
+        --ink: #14161c;
+        --ink-soft: #5f6673;
+        --ink-faint: #98a0ad;
+        --accent: #5a5cf0;
+        --accent-strong: #4648d8;
+        --success: #15803d;
+        --danger: #dc2626;
+        --font: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #08090c;
+          --surface: #111318;
+          --surface-muted: #15181e;
+          --surface-inset: #1c2029;
+          --line: rgba(255, 255, 255, 0.08);
+          --line-strong: rgba(255, 255, 255, 0.16);
+          --ink: #eceef4;
+          --ink-soft: #a2a9b6;
+          --ink-faint: #6f7683;
+          --accent: #8b8dff;
+          --accent-strong: #a9abff;
+          --success: #4ade80;
+          --danger: #f87171;
+          color-scheme: dark;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 20px 48px;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: var(--font);
+        font-size: 13px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+      .lead {
+        margin: 0 0 20px;
+        color: var(--ink-soft);
+        font-size: 12px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 2px rgba(16, 20, 30, 0.04),
+          0 18px 40px -28px rgba(16, 20, 30, 0.35);
+      }
+      .card h2 {
+        margin: 0 0 14px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        color: var(--ink-soft);
+        margin-bottom: 12px;
+      }
+      label span {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        font: inherit;
+        font-size: 12px;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line-strong);
+        border-radius: 9px;
+        padding: 9px 11px;
+        outline: none;
+      }
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(90, 92, 240, 0.12);
+      }
+      .hint {
+        margin: -6px 0 14px;
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 8px 14px;
+        border-radius: 9px;
+        border: 1px solid transparent;
+        cursor: pointer;
+      }
+      #save {
+        background: var(--accent);
+        color: #fff;
+      }
+      #save:hover {
+        background: var(--accent-strong);
+      }
+      #test {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--line-strong);
+      }
+      #test:hover {
+        border-color: var(--ink-faint);
+      }
+      #status {
+        font-size: 11px;
+        color: var(--ink-soft);
+      }
+      #status.ok {
+        color: var(--success);
+      }
+      #status.bad {
+        color: var(--danger);
+      }
+      pre {
+        margin: 8px 0;
+        padding: 10px 12px;
+        border-radius: 9px;
+        background: var(--surface-inset);
+        overflow: auto;
+        font-size: 11px;
+        line-height: 1.6;
+      }
+      ol {
+        margin: 8px 0 0;
+        padding-left: 20px;
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      code {
+        background: var(--surface-inset);
+        border-radius: 4px;
+        padding: 1px 4px;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>图片抓取器 · 设置</h1>
+      <p class="lead">配置本机后端地址与导入令牌；令牌只保存在本机浏览器。</p>
+
+      <section class="card">
+        <h2>后端连接</h2>
+        <label>
+          <span>后端地址</span>
+          <input id="backendUrl" placeholder="http://127.0.0.1:5678" />
+        </label>
+        <p class="hint">默认与 <code>pnpm dev-mac</code> 的后端端口一致。</p>
+
+        <label>
+          <span>导入令牌</span>
+          <input id="token" type="password" placeholder="与后端 IMPORT_TOKEN 一致" />
+        </label>
+        <p class="hint">
+          后端只监听本机，导入接口同时要求这个令牌；未配置令牌时后端会返回 503。
+        </p>
+
+        <div class="actions">
+          <button id="save" type="button">保存</button>
+          <button id="test" type="button">测试连接</button>
+          <span id="status"></span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>后端需要的一次性配置</h2>
+        <ol>
+          <li>在仓库根目录执行 <code>cp packages/backend/.env.example packages/backend/.env</code></li>
+          <li>生成一个随机令牌：<code>openssl rand -hex 24</code></li>
+          <li>写入 <code>packages/backend/.env</code>，然后重启后端：</li>
+        </ol>
+        <pre>IMPORT_TOKEN=这里填生成的令牌</pre>
+        <p class="hint">
+          把同一个令牌填到上面的输入框并保存。后端默认只监听
+          <code>127.0.0.1</code>，扩展通过本机回环地址访问。
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>使用方式</h2>
+        <ol>
+          <li>打开图片页面，等图片渲染出来（扩展不代为滚动或点击）。</li>
+          <li>点右下角「发现 N 张」胶囊，或点浏览器工具栏里的扩展图标。</li>
+          <li>勾选图片、填写分组名，点「存入图片库」；也可以「下载到磁盘」。</li>
+        </ol>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

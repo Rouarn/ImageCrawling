@@ -90,6 +90,8 @@ cp packages/frontend/.env.example packages/frontend/.env  # 前端：开发代�
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
+| `HOST` | `127.0.0.1` | 监听地址；默认只听本机，改成 `0.0.0.0` 会暴露到局域网 |
+| `IMPORT_TOKEN` | 空 | 浏览器扩展导入令牌；未配置时导入接口返回 503 |
 | `CHROME_PATH` | 空 | 自定义 Chrome 路径；留空自动探测 |
 | `VERIFICATION_TIMEOUT_MS` | `300000` | 等待人工校验的超时（毫秒） |
 | `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 保留时长（默认 7 天） |
@@ -109,7 +111,7 @@ cp packages/frontend/.env.example packages/frontend/.env  # 前端：开发代�
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `VITE_API_TARGET` | `http://localhost:5678` | 开发服务器把 `/api`、`/media` 代理到的后端地址；仅开发模式使用 |
+| `VITE_API_TARGET` | `http://127.0.0.1:5678` | 开发服务器把 `/api`、`/media` 代理到的后端地址；仅开发模式使用 |
 
 生产部署时前端由静态服务器托管，`/api` 与 `/media` 的转发由反向代理负责，不依赖 `VITE_API_TARGET`。
 
@@ -125,6 +127,7 @@ curl http://localhost:5678/api/system/health
 
 - [架构与分层](architecture.md)
 - [API 契约](api.md)
+- [浏览器扩展](extension.md)
 - [站点适配器](adapters.md)
 - [代理与人工验证](proxy-and-verification.md)
 - [测试与 E2E](testing.md)

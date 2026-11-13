@@ -4,6 +4,7 @@ import { AppConfigModule } from './config/app-config.module';
 import { StorageModule } from './storage/storage.module';
 import { CrawlModule } from './crawl/crawl.module';
 import { ImagesModule } from './images/images.module';
+import { ImportModule } from './import/import.module';
 import { SystemModule } from './system/system.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { ResponseEnvelopeInterceptor } from './common/http/response-envelope.interceptor';
@@ -15,6 +16,7 @@ import { createValidationPipe } from './common/http/validation-pipe.factory';
     StorageModule,
     CrawlModule,
     ImagesModule,
+    ImportModule,
     SystemModule,
   ],
   providers: [

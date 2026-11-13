@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { Server } from 'node:http';
 import { AppModule } from './app.module';
 import { AppConfigService } from './config/app-config.service';
@@ -16,9 +17,24 @@ async function bootstrap(): Promise<void> {
   const storage = app.get(StorageService);
 
   app.use(requestIdMiddleware);
+  // 浏览器扩展从公网站点访问本机导入接口时，Chrome 的 Private Network Access
+  // 会在预检里要求该响应头；必须在 enableCors 之前注册。
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.headers['access-control-request-private-network'] === 'true') {
+      res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+    next();
+  });
   app.enableCors({ origin: true, exposedHeaders: ['x-request-id'] });
   app.use(express.json({ limit: config.bodyLimit }));
   app.use(express.urlencoded({ extended: true, limit: config.bodyLimit }));
+  // 扩展导入接口：图片原始字节，Content-Type 为 image/* 或 application/octet-stream
+  app.use(
+    express.raw({
+      type: ['image/*', 'application/octet-stream'],
+      limit: config.importBodyLimit,
+    }),
+  );
 
   // 静态图片资源：开发环境禁用强缓存，避免删除/替换后看到旧内容
   app.use(
@@ -47,6 +63,7 @@ async function bootstrap(): Promise<void> {
     .setVersion(config.version)
     .addTag('crawl', '抓取任务')
     .addTag('images', '图片库')
+    .addTag('import', '扩展导入')
     .addTag('system', '系统状态')
     .build();
 
@@ -57,13 +74,16 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
-  await app.listen(config.port);
+  await app.listen(config.port, config.host);
   const server = app.getHttpServer() as Server;
   // SSE 任务可能持续数分钟，关闭 Node 默认 5 分钟请求超时
   server.requestTimeout = 0;
 
-  Logger.log(`API  : http://localhost:${config.port}/api`, 'Bootstrap');
-  Logger.log(`Docs : http://localhost:${config.port}/api/docs`, 'Bootstrap');
+  Logger.log(`API  : http://${config.host}:${config.port}/api`, 'Bootstrap');
+  Logger.log(
+    `Docs : http://${config.host}:${config.port}/api/docs`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();

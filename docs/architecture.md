@@ -15,7 +15,8 @@
 image-crawling/
 ├── packages/
 │   ├── backend/    后端源码与配置
-│   └── frontend/   前端源码与配置
+│   ├── frontend/   前端源码与配置
+│   └── extension/  Chrome MV3 扩展（构建产物 dist/）
 ├── scripts/
 │   ├── dev/        启动脚本
 │   └── e2e/        端到端套件与 fixture
@@ -42,6 +43,7 @@ packages/backend/src/
 │   ├── types/    事件、选项、摘要
 │   └── utils/    请求头构造
 ├── images/       控制器 / 服务 / Repository（文件系统访问）
+├── import/       扩展导入接口：令牌、本机校验、内容哈希去重
 └── system/       健康检查
 ```
 
@@ -51,6 +53,17 @@ packages/backend/src/
 - 新增错误场景先补 `ErrorCode`，再抛 `AppException`，不要抛裸 `Error`。
 - 新增接口统一使用 DTO 校验与 Swagger 装饰器，保持响应结构与文档同步。
 - 站点差异只写在 `crawl/adapters/` 下，通用链路不按域名分支，详见[站点适配器](adapters.md)。
+- 扩展导入同样经过 `StorageService.resolveDirectory()` 做分组校验，写入后与抓取产物共用同一套图片库读取逻辑。
+
+## 浏览器扩展
+
+`packages/extension/` 是独立的 MV3 扩展包，用 esbuild 打成 IIFE，`dist/` 可直接在 `chrome://extensions` 加载。分三层：
+
+- **content script**（`src/content/`）：页面内采集图片（`img` / `srcset` / 懒加载属性 / `<picture>` / CSS 背景图），`MutationObserver` 增量更新；在 isolated world 内运行，UI 全部放进 shadow DOM。上传时先在页面上下文取字节（带 Cookie），失败后交给后台重试。
+- **service worker**（`src/background/`）：跨域取字节兜底，`chrome.downloads` 下载。
+- **popup / options**（`src/popup/`、`src/options/`）：与页内面板复用同一个 `ImagePanel` 组件与设计令牌；设置页保存后端地址与导入令牌。
+
+后端新增 `POST /api/import/image` 接收原始字节，要求 `x-import-token` 且只接受本机请求，按 SHA-256 在目标分组内去重，规则详见[浏览器扩展](extension.md)。
 
 ## 抓取链路
 
@@ -112,6 +125,7 @@ packages/frontend/src/
 ## 相关文档
 
 - [API 契约](api.md)
+- [浏览器扩展](extension.md)
 - [站点适配器](adapters.md)
 - [代理与人工验证](proxy-and-verification.md)
 - [测试与 E2E](testing.md)

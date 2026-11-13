@@ -9,6 +9,9 @@
     "e2e:ui": "node scripts/e2e/ui-regression.cjs",
     "e2e:adapters": "node scripts/e2e/adapter-preset.cjs",
     "e2e:girl-atlas": "node scripts/e2e/girl-atlas-verification.cjs",
+    "e2e:extension": "node scripts/e2e/extension.cjs",
+    "extension:build": "pnpm --filter extension build",
+    "extension:watch": "pnpm --filter extension watch",
     "prepare": "husky"
   },
   "keywords": [],

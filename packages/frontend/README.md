@@ -20,6 +20,6 @@ pnpm --filter frontend lint
 cp packages/frontend/.env.example packages/frontend/.env   # 仓库已带默认值，按需修改
 ```
 
-- `VITE_API_TARGET`：开发服务器把 `/api`、`/media` 代理到的后端地址，默认 `http://localhost:5678`。
+- `VITE_API_TARGET`：开发服务器把 `/api`、`/media` 代理到的后端地址，默认 `http://127.0.0.1:5678`。
 - 该变量只在 `vite.config.ts` 中读取，不会打包进浏览器代码。
 - 本地私有覆盖写入 `packages/frontend/.env.local`（已忽略）。
