@@ -4,11 +4,15 @@ import {
   Logger,
   OnModuleDestroy,
 } from '@nestjs/common';
-import * as fs from 'node:fs';
 import { executablePath, launch, type Browser, type Page } from 'puppeteer';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-code';
 import { errorMessage } from '../../common/utils/async.util';
+import {
+  formatChromeHelp,
+  resolveChromeExecutable,
+  type ChromeResolution,
+} from '../../common/utils/chrome-path.util';
 import { AppConfigService } from '../../config/app-config.service';
 import type { ResolvedCrawlOptions } from '../types/crawl-options';
 import { buildBrowserHeaders, resolveUserAgent } from '../utils/headers.util';
@@ -33,18 +37,24 @@ export class HeadlessBrowserService implements OnModuleDestroy {
   private readonly logger = new Logger(HeadlessBrowserService.name);
   private browser?: Browser;
   private launchPromise?: Promise<Browser>;
-  private readonly chromePath?: string;
+  private readonly chrome: ChromeResolution;
 
   constructor(config: AppConfigService) {
-    this.chromePath = config.chromePath;
+    this.chrome = resolveChromeExecutable({
+      configuredPath: config.chromePath,
+      puppeteerExecutablePath: readPuppeteerExecutablePath,
+    });
+    if (this.chrome.executablePath) {
+      this.logger.log(
+        `浏览器可执行文件：${this.chrome.executablePath}（来源：${this.chrome.source}）`,
+      );
+    } else {
+      this.logger.warn(formatChromeHelp(this.chrome));
+    }
   }
 
   isAvailable(): boolean {
-    try {
-      return fs.existsSync(this.chromePath ?? executablePath());
-    } catch {
-      return false;
-    }
+    return Boolean(this.chrome.executablePath);
   }
 
   async extractImages(
@@ -294,12 +304,21 @@ export class HeadlessBrowserService implements OnModuleDestroy {
   }
 
   private getBrowser(): Promise<Browser> {
+    if (!this.chrome.executablePath) {
+      return Promise.reject(
+        new AppException(
+          ErrorCode.HEADLESS_UNAVAILABLE,
+          formatChromeHelp(this.chrome),
+          HttpStatus.SERVICE_UNAVAILABLE,
+        ),
+      );
+    }
     if (this.browser?.connected) return Promise.resolve(this.browser);
     if (!this.launchPromise) {
       this.launchPromise = launch({
         headless: true,
         args: LAUNCH_ARGS,
-        ...(this.chromePath ? { executablePath: this.chromePath } : {}),
+        executablePath: this.chrome.executablePath,
       })
         .then((browser) => {
           this.browser = browser;
@@ -336,4 +355,13 @@ function isAbortSignalError(error: unknown, signal: AbortSignal): boolean {
     (error instanceof Error &&
       (error.name === 'AbortError' || error.name === 'TimeoutError'))
   );
+}
+
+/** Puppeteer 未下载自带浏览器时会抛错，这里统一降级为 undefined */
+function readPuppeteerExecutablePath(): string | undefined {
+  try {
+    return executablePath();
+  } catch {
+    return undefined;
+  }
 }

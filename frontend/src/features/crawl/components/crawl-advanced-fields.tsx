@@ -93,8 +93,8 @@ export function CrawlAdvancedFields({
                 使用 Puppeteer 渲染动态页面，速度较慢但可处理 JS 加载的图片
                 {headlessAvailable === false && (
                   <span className="ml-1 text-warning">
-                    · 本机未检测到 Chrome for Testing，需先执行
-                    `puppeteer browsers install chrome`
+                    · 未检测到可用浏览器。已自动查找系统 Chrome，仍未命中时可用
+                    CHROME_PATH 指定可执行文件路径
                   </span>
                 )}
               </span>
