@@ -43,6 +43,7 @@ const WINDOW_ARGS = [
   '--disable-infobars',
   '--no-first-run',
   '--no-default-browser-check',
+  // 初始窗口尺寸只影响窗口本身；配合 defaultViewport: null，页面内容跟随窗口实际大小
   '--window-size=1280,900',
 ];
 
@@ -277,6 +278,9 @@ export class HumanVerificationService implements OnModuleInit, OnModuleDestroy {
       executablePath: this.chrome.executablePath,
       userDataDir: this.config.verificationProfileDir,
       args,
+      // 不注入固定视口：页面跟随真实窗口大小，用户拉大窗口时布局立即铺满，无需刷新。
+      // 无头实例仍保留固定视口（保证提取结果稳定），只改人工验证这一条路径。
+      defaultViewport: null,
     });
     pending.window = browser;
     this.activeWindowTaskId = pending.session.taskId;
