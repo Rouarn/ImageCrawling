@@ -25,7 +25,8 @@ stats.html
 *.sln
 *.sw?
 
-storage
+# 只忽略仓库根目录的抓取输出，backend/src/storage 是源码目录，不能一起忽略
+/storage/
 
 # 运行时数据（人工验证 profile 等），不进入仓库
 .data

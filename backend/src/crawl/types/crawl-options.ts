@@ -61,7 +61,8 @@ export function resolveCrawlOptions(
 
   return {
     url: request.url,
-    outDir: request.outDir?.trim() || 'images',
+    // 不做 trim：段首/段尾空格交由 StorageService 明确报错，避免静默改写用户输入
+    outDir: request.outDir || 'images',
     maxPages,
     concurrency: request.concurrency ?? CRAWL_DEFAULTS.concurrency,
     pageDelayMs: request.pageDelayMs ?? CRAWL_DEFAULTS.pageDelayMs,

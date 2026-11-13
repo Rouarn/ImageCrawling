@@ -1,5 +1,5 @@
 /**
- * 根据目标 URL 推导默认输出目录（与后端 outDir 校验规则保持一致）。
+ * 根据目标 URL 推导一个一定合法的默认输出目录（后端允许更自然的命名，这里只做保守建议）。
  */
 export function deriveOutDir(rawUrl: string): string {
   if (!rawUrl) return '';

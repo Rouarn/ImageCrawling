@@ -33,13 +33,14 @@ export class CrawlRequestDto {
   url!: string;
 
   @ApiPropertyOptional({
-    description: '存储目录内的相对输出目录',
+    description:
+      '存储目录内的相对输出目录，以 / 分隔层级；允许空格、括号、中文标点、书名号与 emoji，' +
+      '拒绝空段、. / ..、控制字符、反斜杠、段首/段尾的空格与点、Windows 保留名及超长输入；服务端会先做 Unicode NFC 规范化',
     default: 'images',
-    example: 'example-com',
+    example: '画廊 2024（精选）',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(160)
   outDir?: string;
 
   @ApiPropertyOptional({

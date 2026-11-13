@@ -90,7 +90,7 @@ export function CrawlForm() {
   const handleFinish = (values: CrawlFormValues) => {
     const request: CrawlRequest = {
       url: values.url.trim(),
-      outDir: values.outDir?.trim() || undefined,
+      outDir: values.outDir || undefined,
       maxPages: values.maxPages,
       concurrency: values.concurrency,
       pageDelayMs: values.pageDelayMs,
@@ -204,11 +204,15 @@ export function CrawlForm() {
           <Form.Item
             name="outDir"
             label="输出目录"
-            extra={<span className="text-[11px]">相对 storage/ 目录，可自定义</span>}
+            extra={
+              <span className="text-[11px]">
+                相对 storage/ 目录，可自定义；支持空格、括号、中文标点与 emoji，不能以点或空格开头/结尾
+              </span>
+            }
           >
             <Input
               prefix={<FolderOpenOutlined className="text-ink-faint" />}
-              placeholder="example-com"
+              placeholder="画廊 2024（精选）"
               autoComplete="off"
               onChange={() => setOutDirTouched(true)}
             />

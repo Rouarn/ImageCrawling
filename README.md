@@ -137,7 +137,13 @@ pnpm --filter backend exec puppeteer browsers install chrome
 }
 ```
 
-`outDir` 必须是 `storage/` 下的相对路径；不传时默认 `images`。`pagePattern` 仅在分页模板模式下使用，且必须包含 `{page}`。
+`outDir` 必须是 `storage/` 下的相对路径，不传时默认 `images`。命名按黑名单逐段校验（`/` 分隔层级）：
+
+- 允许：空格、括号、中文标点、书名号、emoji、连字符、下划线，以及非结尾的点，例如 `画廊 2024（精选）/插画 · 合集`。
+- 拒绝：空段、`.` 与 `..`、控制字符（含 NUL）、反斜杠、段首/段尾的空格与点、Windows 保留名（`CON`/`PRN`/`AUX`/`NUL`/`COM1-9`/`LPT1-9`，带扩展名也算）、单段超过 255 字节（UTF-8）与整条路径超过 1024 字节（UTF-8）。
+- 输入会先做 Unicode NFC 规范化再校验和落盘，避免同形异码出现两个目录；已存在的历史目录保持原名，不会改名。
+
+接口返回的错误信息会指明第几段、违反了哪条规则，并附带可用示例。`pagePattern` 仅在分页模板模式下使用，且必须包含 `{page}`。
 
 ### 站点适配器
 
@@ -197,7 +203,7 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 | code | 场景 |
 | --- | --- |
 | `VALIDATION_FAILED` | DTO / 查询参数校验失败 |
-| `INVALID_OUT_DIR` | 输出目录为空、绝对路径或包含非法字符 |
+| `INVALID_OUT_DIR` | 输出目录为空、绝对路径或不符合命名规则（信息中会指明第几段） |
 | `INVALID_PAGINATION` | 结束页小于起始页、页数超过上限 |
 | `PAGE_FETCH_FAILED` | 页面请求失败或超时 |
 | `HEADLESS_UNAVAILABLE` | Chrome 未安装或启动失败 |
@@ -267,7 +273,7 @@ cp frontend/.env.example frontend/.env    # 前端：开发服务器代理目标
 
 ## 存储约定
 
-- 所有写入都限制在存储根目录内；`outDir` 只接受相对路径，拒绝 `..`、绝对路径和非法字符。
+- 所有写入都限制在存储根目录内；`outDir` 只接受相对路径，按黑名单拒绝 `..`、绝对路径、控制字符、Windows 保留名等危险名称，其余自然命名（空格、括号、中文标点、emoji）均可用；详见「抓取请求」一节。
 - 图片库分组取存储根目录下的一级目录，直接位于根目录的文件归入“根目录”。
 - 下载时会校验文件头与 `content-type`，HTML/JS 等非图片响应会被记为失败而不是写入磁盘。
 - 同名文件自动追加 `-1`、`-2` 后缀，不会覆盖已有图片。
