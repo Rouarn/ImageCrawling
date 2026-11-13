@@ -28,6 +28,7 @@
 │   ├── common/          # 统一响应/异常、校验管道、路径与抓取工具
 │   ├── storage/         # 存储根目录与路径安全校验
 │   ├── crawl/           # 抓取编排、分页规划、解析、无头浏览器、下载
+│   │   └── adapters/    # 站点适配器：types / registry / 每站点一个文件
 │   ├── images/          # 图片库查询/元信息/批量删除（Repository 隔离文件系统）
 │   └── system/          # 健康检查
 ├── frontend/src
@@ -67,19 +68,21 @@ VITE_API_TARGET=http://localhost:3000 pnpm --filter frontend dev
 
 ### 无头浏览器
 
-无头模式需要 Chrome。二选一：
+无头模式会按固定优先级自动寻找浏览器：`CHROME_PATH` 配置 → 系统常见安装位置（macOS / Windows / Linux 的 Chrome、Chrome Beta、Chrome Canary、Chromium）→ Puppeteer 自带缓存。
 
-```bash
-pnpm --filter backend exec puppeteer browsers install chrome
-```
-
-或复用本机已安装的 Chrome：
+本机装了 Chrome 时无需任何配置。只有全部路径都不命中时，才需要手动指定或安装：
 
 ```bash
 CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" pnpm --filter backend start:dev
 ```
 
-未安装时服务仍可正常使用静态抓取，前端会在高级选项里提示，健康检查的 `headless.available` 为 `false`。
+也可以用 Puppeteer 安装独立版本：
+
+```bash
+pnpm --filter backend exec puppeteer browsers install chrome
+```
+
+全部未命中时，启动日志和抓取错误会列出实际尝试过的每一个路径，而不是只提示去下载浏览器；健康检查的 `headless.available` 为 `false`。
 
 ## 接口说明
 
@@ -105,6 +108,7 @@ CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" pnpm 
 | --- | --- | --- |
 | GET | `/api/system/health` | 服务、存储与无头浏览器状态 |
 | GET | `/api/crawl/options` | 抓取参数默认值与限制 |
+| GET | `/api/adapters` | 站点适配器预设（前端下拉数据） |
 | POST | `/api/crawl/stream` | 启动抓取任务，SSE 推送进度 |
 | GET | `/api/images/groups` | 分组及数量统计 |
 | GET | `/api/images` | 分页图片列表（`group` / `page` / `pageSize` / `q` / `sort`） |
@@ -132,6 +136,23 @@ CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" pnpm 
 ```
 
 `outDir` 必须是 `storage/` 下的相对路径；不传时默认 `images`。`pagePattern` 仅在分页模板模式下使用，且必须包含 `{page}`。
+
+### 站点适配器
+
+针对特定站点做隔离适配，通用链路只在入口处解析一次适配器：
+
+- 代码固定在 `backend/src/crawl/adapters/`：`types.ts` 定义契约，`registry.ts` 按数组顺序注册（越靠前优先级越高，默认适配器始终最后），每个站点一个文件。
+- 适配器可覆盖：域名/URL 匹配、入口 URL 改写、开抓前准备（Cookie / 登录态 / 代理会话）、页面等待与年龄门点击、滚动与图片收集策略、分页规则、图片下载请求头。
+- `CrawlService` 中只有一处 `resolveAdapter()`；未命中任何站点时回落到默认适配器，行为与通用抓取完全一致。
+- 代理、Cookie 等敏感或环境相关配置只从环境变量读取，不写进适配器源码。
+- 前端“站点预设”下拉数据来自 `GET /api/adapters`，选中后自动填入入口地址与建议参数，并提示该预设需要的额外条件；不选预设时不发送任何额外字段。
+
+`girl-atlas` 适配器用到的环境变量：
+
+| 变量 | 说明 |
+| --- | --- |
+| `GIRL_ATLAS_PROXY` / `CRAWL_PROXY_URL` | HTTP 代理，形如 `http://127.0.0.1:7897` |
+| `GIRL_ATLAS_COOKIE` | 可选，登录态或年龄门 Cookie |
 
 ### SSE 事件
 
@@ -185,7 +206,10 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 | --- | --- | --- |
 | `PORT` | `3000` | 后端监听端口 |
 | `STORAGE_DIR` | `<仓库>/storage` | 图片存储根目录（绝对路径） |
-| `CHROME_PATH` | 空 | 自定义 Chrome 可执行文件 |
+| `CHROME_PATH` | 空 | 自定义 Chrome 可执行文件（优先于自动探测） |
+| `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退读取 `HTTPS_PROXY` / `HTTP_PROXY` |
+| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理，优先于 `CRAWL_PROXY_URL` |
+| `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
 | `VITE_API_TARGET` | `http://localhost:5678` | 前端开发代理目标 |
 
 ## 存储约定
@@ -206,12 +230,24 @@ pnpm --filter frontend build
 
 本次重构后的实测结果：
 
-- 后端：构建与 ESLint 通过；Swagger 输出 6 个路径、8 个 Schema。
+- 后端：构建与 ESLint 通过；Swagger 输出 7 个路径、8 个 Schema（含 `/api/adapters`）。
 - 接口：健康检查、参数默认值、分组、分页列表、搜索排序、元信息（返回 1079×1300）、批量删除（1 成功 / 2 失败并返回各自错误码）、非法查询参数、路径穿越拦截均符合预期。
 - 抓取：本地测试站点自动翻页 3 页去重后保存 3 张；分页模板 2 页保存 2 张；无头模式发现 5 个地址、保存 3 张，另 2 个非图片响应被拒绝。
 - 取消：断开 SSE 后任务停止且不再写文件；前端“取消”按钮同步生效。
 - 浏览器回归：真实启动前后端后执行 25 项 UI 断言，全部通过，覆盖抓取、日志、进度、图片库分组/搜索、预览、单张与批量删除、错误提示、深色模式、移动端无横向溢出与底部导航。
 - 运行期间浏览器控制台无错误。
+
+### 站点适配器与 Chrome 探测
+
+```bash
+pnpm --filter backend test
+```
+
+- 适配器契约：14 项断言全部通过，覆盖域名匹配、未匹配回退默认适配器、非法 URL 回退、注册顺序优先级、预设接口字段、默认适配器运行时零副作用、girl-atlas 入口改写 / 代理 / Cookie / 分页解析。
+- 前端预设：11 项 UI 断言通过，覆盖下拉出现、自动填入 URL、目录推导、建议页数、条件提示、无头自动开启、清除预设恢复通用模式。
+- 适配器接入后默认路径回归仍为 25/25。
+- Chrome 探测：不设 `CHROME_PATH` 时命中 `/Applications/Google Chrome.app/...`，健康检查 `headless.available=true`，无头抓取实际保存成功；把所有探测路径置空后，提示会列出 8 条尝试过的路径并指向 `CHROME_PATH`。
+- girl-atlas 实测：适配器正常命中并完成入口改写、代理注入、403 容忍、等待与滚动，但本机经 `127.0.0.1:7897` 代理仍停留在 Cloudflare 人机校验页，挑战子资源（`*.challenges.cloudflare.com`）连接被关闭，页面始终未出现真实内容，因此未抓到图片。任务会以 `PAGE_FETCH_FAILED`（页面未渲染出预期内容）明确结束，不会伪装成成功。
 
 ## 提交规范
 

@@ -14,6 +14,7 @@ src/
 ├── storage/      存储根目录与路径校验的唯一入口
 ├── crawl/
 │   ├── services/ 分页规划 / 静态抓取 / 解析 / 无头浏览器 / 下载 / 编排
+│   ├── adapters/ 站点适配器契约、注册表、默认与站点实现
 │   ├── dto/      请求参数与校验
 │   ├── types/    事件、选项、摘要
 │   └── utils/    请求头构造
@@ -24,14 +25,20 @@ src/
 ## 抓取链路
 
 1. `CrawlController` 校验 DTO，建立 SSE 通道，监听客户端断开。
-2. `CrawlService` 解析默认值，调用 `PaginationPlannerService` 规划分页。
+2. `CrawlService` 解析默认值，并在入口处执行唯一一次 `resolveAdapter()`。
+   - 命中站点适配器则执行入口改写与 `prepare()`（Cookie、代理会话等）。
+   - 未命中则使用默认适配器，运行时配置为空，行为与通用抓取一致。
+3. `PaginationPlannerService` 规划分页。
    - 自动模式会边探测下一页边缓存 HTML，后续解析不再重复请求。
    - 模板模式按 `{page}` 生成 URL，单次最多 200 页。
-3. 每页优先静态解析；失败则回退到 `HeadlessBrowserService`。浏览器实例在进程内复用。
-4. 图片地址按页去重后交给 `ImageDownloaderService` 并发下载。
+   - 适配器可通过 `pagination.nextPageUrl` / `buildPageUrl` 接管规则。
+4. 每页优先静态解析；失败则回退到 `HeadlessBrowserService`。浏览器按代理地址复用实例。
+   - 适配器可声明 `waitForSelector`、`clickSelectors`（年龄门）、`scroll` 策略。
+5. 图片地址按页去重后交给 `ImageDownloaderService` 并发下载。
    - 校验文件头与 `content-type`，拒绝 HTML/JS 等非图片。
    - 文件名冲突自动追加后缀。
-5. 全程通过 `CrawlEvent` 推送进度；单页、单图失败不会中断任务。
+   - 适配器可补充 Referer 等下载请求头，并指定代理。
+6. 全程通过 `CrawlEvent` 推送进度；单页、单图失败不会中断任务。
 
 ## 接口
 
@@ -41,6 +48,7 @@ src/
 | --- | --- |
 | GET | `/api/system/health` |
 | GET | `/api/crawl/options` |
+| GET | `/api/adapters` |
 | POST | `/api/crawl/stream` |
 | GET | `/api/images/groups` |
 | GET | `/api/images` |
@@ -55,7 +63,10 @@ src/
 | --- | --- | --- |
 | `PORT` | `3000` | 监听端口 |
 | `STORAGE_DIR` | `<仓库>/storage` | 存储根目录 |
-| `CHROME_PATH` | 空 | 无头模式使用的 Chrome 路径 |
+| `CHROME_PATH` | 空 | 无头模式使用的 Chrome 路径（优先于自动探测） |
+| `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退 `HTTPS_PROXY` / `HTTP_PROXY` |
+| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理 |
+| `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
 
 ## 命令
 
@@ -63,6 +74,7 @@ src/
 pnpm --filter backend start:dev
 pnpm --filter backend build
 pnpm --filter backend lint
+pnpm --filter backend test
 ```
 
 ## 约定
@@ -70,3 +82,5 @@ pnpm --filter backend lint
 - 所有文件系统路径必须经过 `StorageService`，越界直接返回 `PATH_OUTSIDE_STORAGE`。
 - 新增错误场景时先补充 `ErrorCode`，再抛 `AppException`，不要直接抛裸 `Error`。
 - 新增接口统一使用 DTO 校验与 Swagger 装饰器，保持响应结构与文档同步。
+- 新增站点适配器只在 `crawl/adapters/` 下建文件并追加到 `REGISTERED_ADAPTERS`，不要在通用链路里写站点判断；敏感配置通过 `AdapterConfig.get()` 读环境变量。
+- 适配器契约的匹配、回退与注册顺序由 `src/crawl/adapters/adapters.spec.ts` 覆盖，改动契约时同步补断言。
