@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "test": "node --test --require ts-node/register \"src/**/*.spec.ts\"",
     "lint": "eslint \"{src,apps,libs}/**/*.ts\" --fix"
   },
   "dependencies": {
@@ -27,7 +28,8 @@
     "puppeteer": "^24.37.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "undici": "^8.12.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

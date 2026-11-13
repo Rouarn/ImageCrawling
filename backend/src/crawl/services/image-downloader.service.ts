@@ -10,6 +10,7 @@ import {
   errorMessage,
   isAbortError,
 } from '../../common/utils/async.util';
+import { requestUrl } from '../../common/utils/http.util';
 import {
   extensionFromMime,
   isImageExtension,
@@ -132,9 +133,15 @@ export class ImageDownloaderService {
 
     try {
       const referer = this.resolveReferer(url, options);
-      const response = await fetch(url, {
-        headers: buildImageHeaders(referer, options.headers),
-        redirect: 'follow',
+      const adapterHeaders =
+        options.adapter?.imageHeaders?.(url, referer) ?? {};
+      const response = await requestUrl(url, {
+        headers: {
+          ...buildImageHeaders(referer, options.headers),
+          ...adapterHeaders,
+        },
+        timeoutMs: options.fetchTimeoutMs,
+        proxyUrl: options.adapter?.proxyUrl,
         signal: combined,
       });
 

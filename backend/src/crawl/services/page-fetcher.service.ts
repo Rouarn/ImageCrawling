@@ -7,11 +7,14 @@ import {
   errorMessage,
   isAbortError,
 } from '../../common/utils/async.util';
+import { requestUrl } from '../../common/utils/http.util';
 import { buildHtmlHeaders } from '../utils/headers.util';
 
 export interface FetchHtmlOptions {
   headers?: Record<string, unknown>;
   timeoutMs: number;
+  /** 站点适配器需要的代理 */
+  proxyUrl?: string;
   signal?: AbortSignal;
 }
 
@@ -36,9 +39,10 @@ export class PageFetcherService {
     const signal = combineSignals([options.signal, timeout.signal]);
 
     try {
-      const response = await fetch(url, {
+      const response = await requestUrl(url, {
         headers: buildHtmlHeaders(options.headers),
-        redirect: 'follow',
+        timeoutMs: options.timeoutMs,
+        proxyUrl: options.proxyUrl,
         signal,
       });
 

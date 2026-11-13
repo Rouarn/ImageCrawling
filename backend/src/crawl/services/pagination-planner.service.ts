@@ -36,7 +36,32 @@ export class PaginationPlannerService {
     if (options.pagePattern) {
       return this.planFromPattern(options, log);
     }
+
+    const adapterPagination = options.adapter?.pagination;
+    if (adapterPagination?.buildPageUrl) {
+      const pages = this.planFromAdapter(options, adapterPagination, log);
+      if (pages) return pages;
+    }
+
     return this.planFromNextLinks(options, signal, log);
+  }
+
+  /** 站点适配器按页码生成地址时，直接采用其分页规则 */
+  private planFromAdapter(
+    options: ResolvedCrawlOptions,
+    pagination: NonNullable<ResolvedCrawlOptions['adapter']>['pagination'],
+    log: PlanLogger,
+  ): PagePlan | undefined {
+    if (!pagination?.buildPageUrl) return undefined;
+    const pages: PageTarget[] = [];
+    for (let pageNumber = 1; pageNumber <= options.maxPages; pageNumber += 1) {
+      const url = pagination.buildPageUrl(pageNumber);
+      if (!url) break;
+      pages.push({ index: pages.length + 1, url });
+    }
+    if (pages.length === 0) return undefined;
+    log('info', `站点适配器分页：共 ${pages.length} 页`);
+    return { mode: 'pattern', pages, htmlCache: new Map() };
   }
 
   private planFromPattern(
@@ -86,6 +111,7 @@ export class PaginationPlannerService {
           const fetched = await this.pageFetcher.fetchHtml(current, {
             headers: options.headers,
             timeoutMs: options.fetchTimeoutMs,
+            proxyUrl: options.adapter?.proxyUrl,
             signal,
           });
           html = fetched.html;
@@ -103,7 +129,9 @@ export class PaginationPlannerService {
         }
       }
 
-      const next = this.extractor.findNextPageUrl(html, current);
+      const next =
+        options.adapter?.pagination?.nextPageUrl?.(html, current) ??
+        this.extractor.findNextPageUrl(html, current);
       if (!next) break;
 
       let nextOrigin: string;

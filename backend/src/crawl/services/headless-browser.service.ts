@@ -7,13 +7,14 @@ import {
 import { executablePath, launch, type Browser, type Page } from 'puppeteer';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-code';
-import { errorMessage } from '../../common/utils/async.util';
+import { delay, errorMessage } from '../../common/utils/async.util';
 import {
   formatChromeHelp,
   resolveChromeExecutable,
   type ChromeResolution,
 } from '../../common/utils/chrome-path.util';
 import { AppConfigService } from '../../config/app-config.service';
+import type { ScrollStrategy } from '../adapters/types';
 import type { ResolvedCrawlOptions } from '../types/crawl-options';
 import { buildBrowserHeaders, resolveUserAgent } from '../utils/headers.util';
 
@@ -35,8 +36,8 @@ const LAUNCH_ARGS = [
 @Injectable()
 export class HeadlessBrowserService implements OnModuleDestroy {
   private readonly logger = new Logger(HeadlessBrowserService.name);
-  private browser?: Browser;
-  private launchPromise?: Promise<Browser>;
+  /** 按代理地址缓存浏览器实例：无代理与各代理会话各复用一个 */
+  private readonly browsers = new Map<string, Promise<Browser>>();
   private readonly chrome: ChromeResolution;
 
   constructor(config: AppConfigService) {
@@ -62,7 +63,7 @@ export class HeadlessBrowserService implements OnModuleDestroy {
     options: ResolvedCrawlOptions,
     signal: AbortSignal,
   ): Promise<string[]> {
-    const browser = await this.getBrowser();
+    const browser = await this.getBrowser(options.adapter?.proxyUrl);
     const page = await browser.newPage();
 
     try {
@@ -83,15 +84,20 @@ export class HeadlessBrowserService implements OnModuleDestroy {
         );
       }
       if (response.status() >= 400) {
-        throw new AppException(
-          ErrorCode.PAGE_FETCH_FAILED,
-          `无头模式页面加载失败：HTTP ${response.status()}`,
-          HttpStatus.BAD_GATEWAY,
-          { url: pageUrl, status: response.status() },
+        if (!options.adapter?.allowHttpErrors) {
+          throw new AppException(
+            ErrorCode.PAGE_FETCH_FAILED,
+            `无头模式页面加载失败：HTTP ${response.status()}`,
+            HttpStatus.BAD_GATEWAY,
+            { url: pageUrl, status: response.status() },
+          );
+        }
+        this.logger.warn(
+          `页面返回 HTTP ${response.status()}，按适配器设置继续等待渲染`,
         );
       }
 
-      await this.scrollToBottom(page, options.pageDelayMs);
+      await this.preparePage(page, options, pageUrl);
       this.throwIfAborted(signal);
 
       const domUrls = await page.evaluate(() => {
@@ -242,7 +248,7 @@ export class HeadlessBrowserService implements OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.closeBrowser();
+    await this.closeBrowsers();
   }
 
   private async configurePage(
@@ -303,45 +309,154 @@ export class HeadlessBrowserService implements OnModuleDestroy {
     );
   }
 
-  private getBrowser(): Promise<Browser> {
-    if (!this.chrome.executablePath) {
-      return Promise.reject(
-        new AppException(
-          ErrorCode.HEADLESS_UNAVAILABLE,
-          formatChromeHelp(this.chrome),
-          HttpStatus.SERVICE_UNAVAILABLE,
-        ),
-      );
+  /**
+   * 页面加载后的准备动作：适配器声明的等待、点击（年龄门）与滚动策略。
+   * 未命中适配器时保持原有的整页滚动行为。
+   */
+  private async preparePage(
+    page: Page,
+    options: ResolvedCrawlOptions,
+    pageUrl: string,
+  ): Promise<void> {
+    const adapter = options.adapter;
+    if (!adapter) {
+      await this.scrollToBottom(page, options.pageDelayMs);
+      return;
     }
-    if (this.browser?.connected) return Promise.resolve(this.browser);
-    if (!this.launchPromise) {
-      this.launchPromise = launch({
-        headless: true,
-        args: LAUNCH_ARGS,
-        executablePath: this.chrome.executablePath,
-      })
-        .then((browser) => {
-          this.browser = browser;
-          this.logger.log('无头浏览器已启动');
-          return browser;
-        })
-        .catch((error: unknown) => {
-          this.launchPromise = undefined;
-          throw new AppException(
-            ErrorCode.HEADLESS_UNAVAILABLE,
-            `无头浏览器启动失败：${errorMessage(error)}`,
-            HttpStatus.SERVICE_UNAVAILABLE,
-          );
+
+    if (adapter.waitForSelector) {
+      try {
+        await page.waitForSelector(adapter.waitForSelector, {
+          timeout: Math.min(options.fetchTimeoutMs, 20_000),
         });
+      } catch {
+        throw new AppException(
+          ErrorCode.PAGE_FETCH_FAILED,
+          `页面未渲染出预期内容（等待 ${adapter.waitForSelector} 超时），可能被人机校验或登录态拦截`,
+          HttpStatus.BAD_GATEWAY,
+          { url: pageUrl },
+        );
+      }
     }
-    return this.launchPromise;
+
+    for (const selector of adapter.clickSelectors) {
+      if (await this.tryClick(page, selector)) {
+        this.logger.log(`已点击页面元素：${selector}`);
+      }
+    }
+
+    if (adapter.scroll) {
+      await this.applyScroll(page, adapter.scroll);
+    } else {
+      await this.scrollToBottom(page, options.pageDelayMs);
+    }
   }
 
-  private async closeBrowser(): Promise<void> {
-    const browser = this.browser;
-    this.browser = undefined;
-    this.launchPromise = undefined;
-    if (browser?.connected) await browser.close().catch(() => undefined);
+  private async tryClick(page: Page, selector: string): Promise<boolean> {
+    try {
+      const handle = await page.$(selector);
+      if (!handle) return false;
+      await handle.click();
+      await delay(300);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 按适配器声明的滚动策略触发懒加载，支持整页或指定容器 */
+  private async applyScroll(
+    page: Page,
+    strategy: ScrollStrategy,
+  ): Promise<void> {
+    if (strategy.mode === 'none') return;
+
+    const rounds = strategy.maxRounds ?? 10;
+    const stepPx = strategy.stepPx ?? 600;
+    const intervalMs = strategy.intervalMs ?? 180;
+    const mode = strategy.mode ?? 'page';
+    const selector = strategy.selector ?? '';
+
+    for (let round = 0; round < rounds; round += 1) {
+      const reachedBottom = await page.evaluate(
+        (params: { stepPx: number; mode: string; selector: string }) => {
+          const container =
+            params.mode === 'container' && params.selector
+              ? document.querySelector(params.selector)
+              : null;
+          const target =
+            container ?? document.scrollingElement ?? document.body;
+          if (!target) return true;
+          const before = target.scrollTop;
+          target.scrollTop = before + params.stepPx;
+          return (
+            target.scrollTop + target.clientHeight >= target.scrollHeight - 2
+          );
+        },
+        { stepPx, mode, selector },
+      );
+      await delay(intervalMs);
+      if (reachedBottom) break;
+    }
+
+    await delay(strategy.settleMs ?? 1200);
+  }
+
+  private async getBrowser(proxyUrl?: string): Promise<Browser> {
+    if (!this.chrome.executablePath) {
+      throw new AppException(
+        ErrorCode.HEADLESS_UNAVAILABLE,
+        formatChromeHelp(this.chrome),
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    const key = proxyUrl ?? '';
+    const cached = this.browsers.get(key);
+    if (cached) {
+      const browser = await cached.catch(() => undefined);
+      if (browser?.connected) return browser;
+      this.browsers.delete(key);
+    }
+
+    const args = proxyUrl
+      ? [...LAUNCH_ARGS, `--proxy-server=${proxyUrl}`]
+      : LAUNCH_ARGS;
+    const launchPromise = launch({
+      headless: true,
+      args,
+      executablePath: this.chrome.executablePath,
+    })
+      .then((browser) => {
+        this.logger.log(
+          proxyUrl
+            ? `无头浏览器已启动（代理 ${proxyUrl}）`
+            : '无头浏览器已启动',
+        );
+        return browser;
+      })
+      .catch((error: unknown) => {
+        this.browsers.delete(key);
+        throw new AppException(
+          ErrorCode.HEADLESS_UNAVAILABLE,
+          `无头浏览器启动失败：${errorMessage(error)}`,
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      });
+
+    this.browsers.set(key, launchPromise);
+    return launchPromise;
+  }
+
+  private async closeBrowsers(): Promise<void> {
+    const pending = [...this.browsers.values()];
+    this.browsers.clear();
+    await Promise.allSettled(
+      pending.map(async (promise) => {
+        const browser = await promise.catch(() => undefined);
+        if (browser?.connected) await browser.close().catch(() => undefined);
+      }),
+    );
   }
 
   private throwIfAborted(signal: AbortSignal): void {

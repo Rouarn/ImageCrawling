@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { AppException } from '../../common/errors/app.exception';
 import { ErrorCode } from '../../common/errors/error-code';
 import { normalizeHeaders } from '../utils/headers.util';
+import type { AdapterRuntime } from '../adapters/types';
 import type { CrawlRequestDto } from '../dto/crawl-request.dto';
 
 export const CRAWL_DEFAULTS = {
@@ -26,6 +27,8 @@ export interface ResolvedCrawlOptions {
   endPage?: number;
   useHeadless: boolean;
   headers: Record<string, string>;
+  /** 命中的站点适配器运行时配置，未命中时由默认适配器接管 */
+  adapter?: AdapterRuntime;
 }
 
 /**

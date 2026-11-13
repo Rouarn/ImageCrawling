@@ -23,14 +23,24 @@ export class AppConfigService {
   /** 可选：自定义 Chrome 可执行文件路径（默认使用 Puppeteer 自带版本） */
   readonly chromePath?: string;
 
+  /** 可选：出站代理地址，供站点适配器按需使用 */
+  readonly proxyUrl?: string;
+
   constructor() {
     this.port = this.readPort();
     this.storageRoot = this.readStorageRoot();
     this.chromePath = process.env.CHROME_PATH?.trim() || undefined;
+    this.proxyUrl =
+      readEnv('CRAWL_PROXY_URL', 'HTTPS_PROXY', 'HTTP_PROXY') || undefined;
     this.logger.log(`Storage root: ${this.storageRoot}`);
     if (this.chromePath) {
       this.logger.log(`Chrome path: ${this.chromePath}`);
     }
+  }
+
+  /** 适配器读取环境变量的统一入口，敏感配置不落到源码 */
+  getEnv(key: string): string | undefined {
+    return process.env[key]?.trim() || undefined;
   }
 
   private readPort(): number {
@@ -44,4 +54,12 @@ export class AppConfigService {
     // 默认位于仓库根目录：backend/dist/config -> ../../../storage
     return path.resolve(__dirname, '../../../storage');
   }
+}
+
+function readEnv(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
 }
