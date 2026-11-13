@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_TARGET,
           changeOrigin: true,
         },
-        '/storage': {
+        '/media': {
           target: env.VITE_API_TARGET,
           changeOrigin: true,
         },

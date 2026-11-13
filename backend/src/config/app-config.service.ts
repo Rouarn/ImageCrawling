@@ -31,7 +31,7 @@ export class AppConfigService {
   /** 代理地址来自哪个环境变量（仅用于日志，不输出地址本身） */
   readonly proxySource?: string;
 
-  /** 运行时数据目录（人工验证 profile 等），默认仓库根目录 .data */
+  /** 运行时数据目录（人工验证 profile 等），默认仓库根目录 data/browser */
   readonly dataRoot: string;
 
   /** 人工验证使用的独立 Chrome profile 目录 */
@@ -47,7 +47,8 @@ export class AppConfigService {
     this.port = this.readPort();
     this.storageRoot = this.readStorageRoot();
     this.dataRoot =
-      process.env.DATA_DIR?.trim() || path.resolve(__dirname, '../../../.data');
+      process.env.DATA_DIR?.trim() ||
+      path.resolve(__dirname, '../../../data/browser');
     this.verificationProfileDir = path.join(
       this.dataRoot,
       'chrome-verification-profile',
@@ -115,8 +116,8 @@ export class AppConfigService {
   private readStorageRoot(): string {
     const configured = process.env.STORAGE_DIR?.trim();
     if (configured) return path.resolve(configured);
-    // 默认位于仓库根目录：backend/dist/config -> ../../../storage
-    return path.resolve(__dirname, '../../../storage');
+    // 默认位于仓库根目录：backend/dist/config -> ../../../data/library
+    return path.resolve(__dirname, '../../../data/library');
   }
 }
 

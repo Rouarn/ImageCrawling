@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
-const STORAGE_ROOT = path.join(REPO_ROOT, 'storage');
+const STORAGE_ROOT = path.join(REPO_ROOT, 'data', 'library');
 const TEST_PREFIX = '_e2e-';
 
 const tracked = new Set();
@@ -20,7 +20,7 @@ function assertSafeDir(dir) {
 }
 
 /**
- * 注册一个测试输出目录（storage/_e2e-*）。
+ * 注册一个测试输出目录（data/library/_e2e-*）。
  * 会先删掉同名旧目录，保证断言从干净状态开始。
  */
 function trackTestOutDir(name) {
@@ -47,7 +47,7 @@ function cleanupTestDirs() {
 }
 
 /**
- * 清理历史遗留的 storage/_e2e-* 目录（只匹配测试前缀，绝不动 storage 其它内容）。
+ * 清理历史遗留的 data/library/_e2e-* 目录（只匹配测试前缀，绝不动其它图片分组）。
  * 放在测试启动时调用，可兜住上一次异常退出留下的目录。
  */
 function cleanupStaleTestDirs() {

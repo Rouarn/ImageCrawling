@@ -104,7 +104,7 @@ export class CrawlService {
     emit({
       type: 'log',
       level: 'info',
-      message: `开始抓取 ${resolved.url}，输出目录 storage/${resolved.outDir}`,
+      message: `开始抓取 ${resolved.url}，输出目录 data/library/${resolved.outDir}`,
     });
 
     // 全链路唯一的适配器解析入口，未命中时由默认适配器接管，行为与通用抓取一致

@@ -80,7 +80,7 @@ export class ImagesService {
       path: file.path,
       name: file.name,
       group: file.group,
-      url: `/storage/${encodePathSegments(file.path)}`,
+      url: `/media/${encodePathSegments(file.path)}`,
       size: file.size,
       updatedAt: file.updatedAt,
     };

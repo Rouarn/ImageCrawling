@@ -228,7 +228,7 @@ export function TaskConsole() {
                   </div>
                   <div className="mt-1 text-[11px] text-ink-soft">
                     失败 {failed} · 用时 {formatDuration(durationMs)}
-                    {outDir ? ` · storage/${outDir}` : ''}
+                    {outDir ? ` · data/library/${outDir}` : ''}
                   </div>
                 </div>
                 <Button type="primary" onClick={() => navigate('/library')}>

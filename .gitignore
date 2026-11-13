@@ -18,18 +18,18 @@ stats.html
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# 只忽略仓库根目录的抓取输出，backend/src/storage 是源码目录，不能一起忽略
-/storage/
+# macOS
+.DS_Store
 
-# 运行时数据（人工验证 profile 等），不进入仓库
-.data
+# 运行时数据：抓取产物（data/library）与验证 profile（data/browser）全部不入库。
+# 只匹配仓库根目录的 data/，backend/src/storage 是源码目录，不受影响。
+/data/
 
 # 本地环境变量：只提交 .env.example，真实 .env 含代理与 Cookie，不进仓库
 backend/.env

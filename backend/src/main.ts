@@ -22,7 +22,7 @@ async function bootstrap(): Promise<void> {
 
   // 静态图片资源：开发环境禁用强缓存，避免删除/替换后看到旧内容
   app.use(
-    '/storage',
+    '/media',
     express.static(storage.root, {
       index: false,
       dotfiles: 'ignore',

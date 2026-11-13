@@ -13,7 +13,7 @@ const { trackTestOutDir, cleanupTestDirs, cleanupStaleTestDirs } = require('./li
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 const results = [];
 
-// 测试输出目录固定为 storage/_e2e-*，结束时统一清理
+// 测试输出目录固定为 data/library/_e2e-*，结束时统一清理
 cleanupStaleTestDirs();
 trackTestOutDir('ui');
 trackTestOutDir('ui-error');

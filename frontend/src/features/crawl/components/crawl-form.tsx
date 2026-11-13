@@ -212,7 +212,7 @@ export function CrawlForm() {
             label="输出目录"
             extra={
               <span className="text-[11px]">
-                相对 storage/ 目录，可自定义；支持空格、括号、中文标点与 emoji，不能以点或空格开头/结尾
+                相对 data/library/ 目录，可自定义；支持空格、括号、中文标点与 emoji，不能以点或空格开头/结尾
               </span>
             }
           >

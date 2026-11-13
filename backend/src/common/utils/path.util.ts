@@ -2,7 +2,7 @@ import * as path from 'node:path';
 
 /**
  * 判断 candidate 是否位于 root 目录内（含 root 本身）。
- * 使用 path.relative 避免 `/storage-evil` 这类前缀误判。
+ * 使用 path.relative 避免 `/library-evil` 这类前缀误判。
  */
 export function isPathInside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);

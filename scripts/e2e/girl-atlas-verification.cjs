@@ -1,7 +1,7 @@
 /**
  * 人机验证流程 E2E：断言提示卡 -> 打开验证窗口 -> 任务继续并完成。
  * 前置：后端（默认 5678）已配置 girl-atlas 可用代理；前端 5173 已启动。
- * 全部基于 DOM 文本与 HTTP 响应，不使用截图；输出目录固定为 storage/_e2e-girl-atlas，结束后自动清理。
+ * 全部基于 DOM 文本与 HTTP 响应，不使用截图；输出目录固定为 data/library/_e2e-girl-atlas，结束后自动清理。
  */
 const path = require('node:path');
 const { createRequire } = require('node:module');
