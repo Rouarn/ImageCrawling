@@ -1,23 +1,26 @@
 import { Module } from '@nestjs/common';
-import { ServeStaticModule } from '@nestjs/serve-static';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { AppConfigModule } from './config/app-config.module';
+import { StorageModule } from './storage/storage.module';
 import { CrawlModule } from './crawl/crawl.module';
 import { ImagesModule } from './images/images.module';
-import { STORAGE_ROOT } from './common/constants';
+import { SystemModule } from './system/system.module';
+import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
+import { ResponseEnvelopeInterceptor } from './common/http/response-envelope.interceptor';
+import { createValidationPipe } from './common/http/validation-pipe.factory';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: STORAGE_ROOT,
-      serveRoot: '/storage',
-      serveStaticOptions: {
-        maxAge: '1d',
-        etag: true,
-      },
-    }),
+    AppConfigModule,
+    StorageModule,
     CrawlModule,
     ImagesModule,
+    SystemModule,
   ],
-  controllers: [],
-  providers: [],
+  providers: [
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
+    { provide: APP_PIPE, useFactory: createValidationPipe },
+  ],
 })
 export class AppModule {}

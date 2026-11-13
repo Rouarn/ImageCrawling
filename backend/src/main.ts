@@ -1,31 +1,67 @@
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
-import { STORAGE_ROOT, ensureDir } from './common/constants';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
+import type { Server } from 'node:http';
+import { AppModule } from './app.module';
+import { AppConfigService } from './config/app-config.service';
+import { requestIdMiddleware } from './common/http/request-id.middleware';
+import { StorageService } from './storage/storage.service';
 
-async function bootstrap() {
-  // 在静态服务启动前确保存储目录存在
-  ensureDir(STORAGE_ROOT);
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const config = app.get(AppConfigService);
+  const storage = app.get(StorageService);
 
-  const app = await NestFactory.create(AppModule);
+  app.use(requestIdMiddleware);
+  app.enableCors({ origin: true, exposedHeaders: ['x-request-id'] });
+  app.use(express.json({ limit: config.bodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: config.bodyLimit }));
 
-  // 启用前端跨域支持
-  app.enableCors();
-
-  // 增加请求体大小限制
-  app.use(express.json({ limit: '200kb' }));
-
-  // 全局验证管道
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
+  // 静态图片资源：开发环境禁用强缓存，避免删除/替换后看到旧内容
+  app.use(
+    '/storage',
+    express.static(storage.root, {
+      index: false,
+      dotfiles: 'ignore',
+      etag: true,
+      maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
     }),
   );
 
-  const PORT = process.env.PORT || 3000;
-  await app.listen(PORT);
-  console.log(`后端服务已启动: http://localhost:${PORT}`);
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('图片抓取器 API')
+    .setDescription(
+      [
+        '个人使用的网络图片抓取工具。',
+        '',
+        '**统一响应结构**：REST 接口成功时返回 `{ success: true, data }`；',
+        '失败时返回 `{ success: false, error: { code, message, details? }, meta }`。',
+        '',
+        '**抓取进度**：请使用 `POST /api/crawl/stream`，通过 SSE 接收结构化事件；',
+        '客户端断开连接即取消任务。',
+      ].join('\n'),
+    )
+    .setVersion(config.version)
+    .addTag('crawl', '抓取任务')
+    .addTag('images', '图片库')
+    .addTag('system', '系统状态')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    jsonDocumentUrl: 'api/docs-json',
+  });
+
+  app.enableShutdownHooks();
+
+  await app.listen(config.port);
+  const server = app.getHttpServer() as Server;
+  // SSE 任务可能持续数分钟，关闭 Node 默认 5 分钟请求超时
+  server.requestTimeout = 0;
+
+  Logger.log(`API  : http://localhost:${config.port}/api`, 'Bootstrap');
+  Logger.log(`Docs : http://localhost:${config.port}/api/docs`, 'Bootstrap');
 }
+
 void bootstrap();
