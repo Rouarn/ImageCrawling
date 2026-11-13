@@ -10,8 +10,8 @@
       body {
         margin: 0;
         height: 100%;
-        /* 设计高度 600，但窗口内容区更矮时跟随实际视口，避免底栏被裁 */
-        min-height: min(600px, 100vh);
+        /* 600 是弹窗设计高度，也是 Chrome 弹窗的最大内容高度 */
+        min-height: 600px;
         overflow: hidden;
         background: var(--canvas);
         color: var(--ink);

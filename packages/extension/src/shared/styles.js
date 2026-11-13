@@ -89,7 +89,7 @@ button, input, select { font-family: inherit; }
 }
 .ic-panel--popup {
   flex: 1 1 auto; width: 100%; max-width: 100%; height: 100%; min-width: 0;
-  min-height: min(600px, 100vh);
+  min-height: 600px;
   border-radius: 0; border: 0; box-shadow: none;
 }
 @keyframes ic-panel-in {
