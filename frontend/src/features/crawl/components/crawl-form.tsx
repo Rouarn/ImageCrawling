@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useState } from 'react';
 import {
   BranchesOutlined,
   CompassOutlined,
@@ -61,10 +61,16 @@ export function CrawlForm() {
   const [presetId, setPresetId] = useState('');
   const preset = adapters.find((item) => item.id === presetId);
 
-  const handleUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+  // 统一从表单值变化里拿 URL，避免依赖某个输入框的 onChange 事件对象
+  const handleValuesChange = (changed: Partial<CrawlFormValues>) => {
+    if ('outDir' in changed) {
+      // 只有用户把目录改成了非空内容才算「手动接管」；清空后恢复自动推导
+      setOutDirTouched(Boolean(changed.outDir?.trim()));
+      return;
+    }
+    if (!('url' in changed)) return;
     if (outDirTouched) return;
-    const derived = deriveOutDir(event.target.value);
-    form.setFieldValue('outDir', derived);
+    form.setFieldValue('outDir', deriveOutDir(changed.url ?? ''));
   };
 
   const handlePresetChange = (value?: string) => {
@@ -75,9 +81,9 @@ export function CrawlForm() {
 
     if (next.entryUrl) {
       form.setFieldValue('url', next.entryUrl);
-      if (!outDirTouched) {
-        form.setFieldValue('outDir', deriveOutDir(next.entryUrl));
-      }
+      // 选中预设视为一次性填充：同时恢复自动推导，后续改 URL 仍会跟随
+      setOutDirTouched(false);
+      form.setFieldValue('outDir', deriveOutDir(next.entryUrl));
     }
     if (next.options?.useHeadless !== undefined) {
       form.setFieldValue('useHeadless', next.options.useHeadless);
@@ -127,6 +133,7 @@ export function CrawlForm() {
         layout="vertical"
         requiredMark={false}
         onFinish={handleFinish}
+        onValuesChange={handleValuesChange}
         initialValues={{
           outDir: '',
           maxPages: options.defaults.maxPages,
@@ -196,7 +203,6 @@ export function CrawlForm() {
             placeholder="https://example.com/gallery"
             autoComplete="off"
             spellCheck={false}
-            onChange={handleUrlChange}
           />
         </Form.Item>
 
@@ -214,7 +220,6 @@ export function CrawlForm() {
               prefix={<FolderOpenOutlined className="text-ink-faint" />}
               placeholder="画廊 2024（精选）"
               autoComplete="off"
-              onChange={() => setOutDirTouched(true)}
             />
           </Form.Item>
 

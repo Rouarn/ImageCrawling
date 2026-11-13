@@ -78,9 +78,26 @@ async function cardTitles(page) {
     );
 
     // ---- 成功抓取 ----
+    await fill(page, '#url', 'https://www.example.com/gallery/album-1?page=2&from=list');
+    const derivedFromUrl = await page.$eval('#outDir', (el) => el.value);
+    check('输入 URL 自动填充目录', derivedFromUrl === 'album-1', `value=${derivedFromUrl}`);
+
+    await fill(page, '#url', 'https://example.com/con');
+    const reservedSafe = await page.$eval('#outDir', (el) => el.value);
+    check('推导结果避开 Windows 保留名', reservedSafe === 'con-site', `value=${reservedSafe}`);
+
     await fill(page, '#url', 'http://127.0.0.1:8899/index.html');
     const derived = await page.$eval('#outDir', (el) => el.value);
     check('输出目录自动推导', derived === 'index', `value=${derived}`);
+    await fill(page, '#outDir', '_e2e-ui');
+    await fill(page, '#url', 'http://127.0.0.1:8899/index.html');
+    const keptOutDir = await page.$eval('#outDir', (el) => el.value);
+    check('手动改写的目录不被 URL 覆盖', keptOutDir === '_e2e-ui', `value=${keptOutDir}`);
+
+    await fill(page, '#outDir', '');
+    await fill(page, '#url', 'http://127.0.0.1:8899/index.html');
+    const resumed = await page.$eval('#outDir', (el) => el.value);
+    check('清空目录后恢复自动填充', resumed === 'index', `value=${resumed}`);
     await fill(page, '#outDir', '_e2e-ui');
     await fill(page, '#maxPages', '3');
     await page.click('button[type="submit"]');
