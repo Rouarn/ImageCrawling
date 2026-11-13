@@ -43,4 +43,13 @@ pnpm --filter frontend build
 pnpm --filter frontend lint
 ```
 
-开发代理读取 `VITE_API_TARGET`（默认 `http://localhost:5678`），同时代理 `/api` 与 `/storage`。
+## 配置
+
+```bash
+cp frontend/.env.example frontend/.env   # 仓库已带默认值，按需修改
+```
+
+- `VITE_API_TARGET`：开发服务器把 `/api`、`/storage` 代理到的后端地址，默认 `http://localhost:5678`。
+- 该变量只在 `vite.config.ts` 中读取，不会打包进浏览器代码；若要在页面代码中使用环境变量，名称必须带 `VITE_` 前缀。
+- 本地私有覆盖写入 `frontend/.env.local`（已忽略），不要修改入库的 `.env` 以免与模板漂移。
+- 完整注释见 [`.env.example`](.env.example)。

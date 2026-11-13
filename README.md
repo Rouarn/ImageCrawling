@@ -149,12 +149,7 @@ pnpm --filter backend exec puppeteer browsers install chrome
 - 代理、Cookie 等敏感或环境相关配置只从环境变量读取，不写进适配器源码。
 - 前端“站点预设”下拉数据来自 `GET /api/adapters`，选中后自动填入入口地址与建议参数，并提示该预设需要的额外条件；不选预设时不发送任何额外字段。
 
-`girl-atlas` 适配器用到的环境变量：
-
-| 变量 | 说明 |
-| --- | --- |
-| `GIRL_ATLAS_PROXY` / `CRAWL_PROXY_URL` | HTTP 代理，形如 `http://127.0.0.1:7897` |
-| `GIRL_ATLAS_COOKIE` | 可选，登录态或年龄门 Cookie |
+`girl-atlas` 需要代理（`GIRL_ATLAS_PROXY` 或 `CRAWL_PROXY_URL`），可选 Cookie（`GIRL_ATLAS_COOKIE`）。把 [backend/.env.example](backend/.env.example) 复制为 `backend/.env` 后填写即可；变量含义见下方「环境变量总表」。
 
 ### 人工验证（人机校验）
 
@@ -219,18 +214,56 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 
 ## 配置
 
-| 环境变量 | 默认值 | 说明 |
+环境变量模板就是两份可直接复制的文件，**不要只依赖 shell 里临时 export**：
+
+```bash
+cp backend/.env.example backend/.env      # 后端：端口、存储、代理、Cookie 等
+cp frontend/.env.example frontend/.env    # 前端：开发服务器代理目标（仓库已带一份默认值）
+```
+
+- 优先级：真实进程环境变量 > `backend/.env` > 代码内默认值；`dotenv` 不会覆盖已存在的变量。
+- `backend/.env` 已被 `.gitignore` 忽略，`backend/.env.example` 入库；模板中只有占位示例，不要提交真实代理或 Cookie。
+- 前端 `frontend/.env` 只含本地开发地址，可安全入库；本地覆盖写 `frontend/.env.local`（已忽略）。
+
+### 环境变量总表
+
+**后端 · 基础配置**
+
+| 变量 | 默认值 | 说明 | 模板 |
+| --- | --- | --- | --- |
+| `PORT` | `3000` | 监听端口（`scripts/start-dev.sh` 固定用 5678 并让前端代理过来） | [backend/.env.example](backend/.env.example) |
+| `STORAGE_DIR` | `<仓库>/storage` | 图片存储根目录，绝对路径 | 同上 |
+| `DATA_DIR` | `<仓库>/.data` | 运行态数据目录（人工验证 profile），已忽略 | 同上 |
+| `NODE_ENV` | 空 | `production` 时 `/storage` 静态资源缓存 7 天，其它值不缓存 | 同上 |
+
+`npm_package_version` 由包管理器在运行时注入（用于 `/api/system/health` 的版本号），不需要手工配置。
+
+**后端 · 运行调优（可选）**
+
+| 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `PORT` | `3000` | 后端监听端口 |
-| `STORAGE_DIR` | `<仓库>/storage` | 图片存储根目录（绝对路径） |
-| `CHROME_PATH` | 空 | 自定义 Chrome 可执行文件（优先于自动探测） |
-| `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退读取 `HTTPS_PROXY` / `HTTP_PROXY` |
-| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理，优先于 `CRAWL_PROXY_URL` |
-| `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
-| `DATA_DIR` | `<仓库>/.data` | 本地运行态数据目录（人工验证 profile 等），已在 `.gitignore` 中 |
-| `VERIFICATION_TIMEOUT_MS` | `300000` | 等待人工完成校验的超时时间（毫秒） |
-| `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 复用期限，超过后启动时清理（默认 7 天） |
-| `VITE_API_TARGET` | `http://localhost:5678` | 前端开发代理目标 |
+| `CHROME_PATH` | 空 | 自定义 Chrome 路径；留空自动探测，探测不到则无头抓取与验证窗口不可用 |
+| `VERIFICATION_TIMEOUT_MS` | `300000` | 等待人工校验的超时（毫秒），超时以 `CHALLENGE_TIMEOUT` 结束 |
+| `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 保留时长（默认 7 天），过期启动时清理 |
+
+**后端 · 使用 girl-atlas 必须设置**
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理，优先级最高；与下面两项至少设置一个 |
+| `CRAWL_PROXY_URL` | 空 | 通用出站代理（所有适配器可用） |
+| `HTTPS_PROXY` / `HTTP_PROXY` | 空 | 系统代理回退；一般由 shell 或代理软件设置，不必写进 `.env` |
+| `GIRL_ATLAS_COOKIE` | 空 | 登录态 / 年龄门 Cookie（`name=value; name2=value2`）；留空按访客访问 |
+
+代理格式统一为 `http://主机:端口`，需要认证时写 `http://用户名:密码@主机:端口`。代理与 Cookie 只在启动日志中报告“是否已配置”，不会打印具体值。
+
+**前端**
+
+| 变量 | 默认值 | 说明 | 模板 |
+| --- | --- | --- | --- |
+| `VITE_API_TARGET` | `http://localhost:5678` | 开发服务器把 `/api`、`/storage` 代理到的后端地址；留空则代理失效 | [frontend/.env.example](frontend/.env.example) |
+
+前端变量只在 Vite 构建配置中读取，不会打包进浏览器代码；若将来要在页面代码中使用，变量名必须带 `VITE_` 前缀。
 
 ## 存储约定
 
