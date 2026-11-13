@@ -15,12 +15,16 @@ export const DEFAULT_PREFS = {
 export const PREF_KEYS = Object.keys(DEFAULT_PREFS);
 
 export async function getPrefs() {
-  const stored = await chrome.storage.local.get(DEFAULT_PREFS);
-  return {
-    minSize: Number(stored.minSize) || 0,
-    format: typeof stored.format === 'string' ? stored.format : 'all',
-    groupMode: stored.groupMode === 'domain' ? 'domain' : 'title',
-  };
+  try {
+    const stored = await chrome.storage.local.get(DEFAULT_PREFS);
+    return {
+      minSize: Number(stored.minSize) || 0,
+      format: typeof stored.format === 'string' ? stored.format : 'all',
+      groupMode: stored.groupMode === 'domain' ? 'domain' : 'title',
+    };
+  } catch {
+    return { ...DEFAULT_PREFS };
+  }
 }
 
 export async function savePrefs(prefs) {

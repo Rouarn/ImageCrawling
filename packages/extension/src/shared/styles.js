@@ -23,7 +23,11 @@ button, input, select { font-family: inherit; }
 
 .ic-root {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 0;
   background: var(--canvas);
   color: var(--ink);
@@ -70,6 +74,7 @@ button, input, select { font-family: inherit; }
 /* ---------- 面板 ---------- */
 .ic-panel {
   display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+  min-width: 0; max-width: 100%;
   background: var(--surface);
   border: 1px solid var(--line); border-radius: 16px;
   box-shadow: var(--shadow-panel);
@@ -78,11 +83,13 @@ button, input, select { font-family: inherit; }
 .ic-panel--overlay {
   position: fixed; right: 18px; bottom: 74px; z-index: 2147483646;
   width: min(620px, calc(100vw - 36px));
+  max-width: calc(100vw - 36px);
   height: min(660px, calc(100vh - 92px));
   animation: ic-panel-in 0.18s ease;
 }
 .ic-panel--popup {
-  flex: 1 1 auto; width: 100%; height: 100%; min-height: 600px;
+  flex: 1 1 auto; width: 100%; max-width: 100%; height: 100%; min-width: 0;
+  min-height: min(600px, 100vh);
   border-radius: 0; border: 0; box-shadow: none;
 }
 @keyframes ic-panel-in {
@@ -93,6 +100,7 @@ button, input, select { font-family: inherit; }
 /* ---------- 头部（玻璃栏） ---------- */
 .ic-head {
   flex: 0 0 auto;
+  min-width: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 13px 16px 11px;
   background: var(--glass);
@@ -100,13 +108,16 @@ button, input, select { font-family: inherit; }
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   border-bottom: 1px solid var(--line);
 }
-.ic-head-text { min-width: 0; flex: 1 1 auto; }
-.ic-title { font-size: 14px; font-weight: 600; letter-spacing: -0.015em; }
-.ic-sub {
-  margin-top: 2px; font-size: 10.5px; color: var(--ink-faint);
+.ic-head-text { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.ic-title {
+  min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.015em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ic-head-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.ic-sub {
+  margin-top: 2px; max-width: 100%; min-width: 0; font-size: 10.5px; color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ic-head-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; min-width: 0; }
 .ic-link {
   appearance: none; border: 0; background: transparent; color: var(--ink-soft);
   font-size: 11px; padding: 5px 7px; border-radius: 6px; cursor: pointer;
@@ -124,11 +135,11 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 主题分段控件 ---------- */
 .ic-theme {
-  display: inline-flex; align-items: center; gap: 1px; padding: 2px;
+  display: inline-flex; align-items: center; gap: 1px; padding: 2px; flex: 0 0 auto;
   background: var(--segment); border-radius: 7px;
 }
 .ic-theme button {
-  appearance: none; border: 0; background: transparent; color: var(--ink-soft);
+  appearance: none; border: 0; background: transparent; color: var(--ink-soft); min-width: 0;
   font-size: 10px; font-weight: 500; line-height: 1; padding: 4px 7px; border-radius: 5px;
   cursor: pointer; white-space: nowrap;
 }
@@ -140,20 +151,20 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 工具栏 ---------- */
 .ic-toolbar {
-  flex: 0 0 auto;
+  flex: 0 0 auto; min-width: 0;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-muted);
 }
-.ic-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ic-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .ic-field { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--ink-faint); }
 .ic-field select {
   appearance: none; border: 1px solid var(--control-border); border-radius: 6px;
   background: var(--control); color: var(--ink); font-size: 10.5px; padding: 3px 7px;
-  cursor: pointer; box-shadow: var(--shadow-control);
+  cursor: pointer; box-shadow: var(--shadow-control); max-width: 100%; min-width: 0;
 }
 .ic-field select:hover { border-color: var(--ink-faint); }
-.ic-filter-count { font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.ic-tool-links { display: flex; align-items: center; gap: 1px; }
+.ic-filter-count { font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; min-width: 0; }
+.ic-tool-links { display: flex; align-items: center; gap: 1px; flex: 0 0 auto; }
 .ic-tool-links button {
   appearance: none; border: 0; background: transparent; color: var(--ink-soft);
   font-size: 10.5px; padding: 4px 6px; border-radius: 5px; cursor: pointer;
@@ -163,7 +174,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 网格 ---------- */
 .ic-grid {
-  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px;
+  flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-rows: max-content; gap: 8px; align-content: start;
 }
@@ -204,7 +215,7 @@ button, input, select { font-family: inherit; }
   color: var(--on-media); background: var(--media-chip); padding: 2px 4px; border-radius: 4px;
 }
 .ic-empty {
-  grid-column: 1 / -1; min-height: 0; display: flex; flex-direction: column;
+  grid-column: 1 / -1; min-width: 0; min-height: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; text-align: center;
   padding: 22px; color: var(--ink-soft);
 }
@@ -223,14 +234,14 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 反馈 ---------- */
 .ic-feedback {
-  flex: 0 0 auto;
+  flex: 0 0 auto; min-width: 0;
   margin: 0 14px 9px; padding: 9px 11px; border-radius: 9px;
   border: 1px solid var(--line); font-size: 10.5px; line-height: 1.5;
   background: var(--surface-muted);
 }
 .ic-panel--popup .ic-feedback { margin: 0 12px 8px; }
-.ic-feedback strong { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: -0.01em; }
-.ic-feedback p { margin: 2px 0 0; color: var(--ink-soft); }
+.ic-feedback strong { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ic-feedback p { margin: 2px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
 .ic-feedback.is-success { background: var(--success-soft); border-color: transparent; }
 .ic-feedback.is-success strong { color: var(--success); }
 .ic-feedback.is-info { background: var(--accent-soft); border-color: transparent; }
@@ -245,11 +256,12 @@ button, input, select { font-family: inherit; }
   list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px;
   max-height: 96px; overflow: auto;
 }
-.ic-fail-list li { display: flex; justify-content: space-between; gap: 10px; color: var(--ink-soft); }
+.ic-fail-list li { display: flex; justify-content: space-between; gap: 10px; color: var(--ink-soft); min-width: 0; }
 .ic-fail-list b {
-  font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-weight: 500; color: var(--ink); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ic-fail-list span { flex: 0 0 auto; color: var(--danger); max-width: 60%; text-align: right; }
+.ic-fail-list span { flex: 0 0 auto; color: var(--danger); max-width: 60%; text-align: right; overflow-wrap: anywhere; }
 .ic-feedback button.ic-config {
   margin-top: 6px; border: 1px solid var(--control-border); background: var(--control);
   color: var(--ink); font-size: 10.5px; padding: 5px 10px; border-radius: 7px; cursor: pointer;
@@ -257,7 +269,7 @@ button, input, select { font-family: inherit; }
 
 /* ---------- 底部（玻璃栏） ---------- */
 .ic-foot {
-  flex: 0 0 auto;
+  flex: 0 0 auto; min-width: 0;
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px 14px 12px;
   background: var(--glass);
@@ -266,16 +278,17 @@ button, input, select { font-family: inherit; }
   border-top: 1px solid var(--line);
 }
 .ic-panel--popup .ic-foot { padding: 10px 12px 12px; gap: 7px; }
-.ic-group-line { display: flex; align-items: center; gap: 8px; }
+.ic-group-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ic-group-line label { flex: 0 0 auto; font-size: 10.5px; color: var(--ink-faint); }
 .ic-group-line input {
-  flex: 1; min-width: 0; font-size: 11.5px; color: var(--ink); background: var(--control);
+  flex: 1 1 0; min-width: 0; font-size: 11.5px; color: var(--ink); background: var(--control);
   border: 1px solid var(--control-border); border-radius: 7px; padding: 6px 8px; outline: none;
   font-family: inherit; box-shadow: var(--shadow-control);
+  text-overflow: ellipsis;
 }
 .ic-group-line input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .ic-group-hint {
-  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; min-width: 0; max-width: 100%;
   margin-left: 33px; font-size: 9.5px; color: var(--ink-faint);
 }
 .ic-chip {
@@ -284,15 +297,15 @@ button, input, select { font-family: inherit; }
   border-radius: 5px; cursor: pointer;
 }
 .ic-chip:hover { border-color: var(--line-strong); color: var(--ink); }
-.ic-group-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.ic-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.ic-count { font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ic-group-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; min-width: 0; }
+.ic-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.ic-count { font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
 .ic-count b { font-size: 12px; color: var(--ink); font-weight: 600; }
-.ic-actions { display: flex; align-items: center; gap: 7px; }
-.ic-panel--popup .ic-actions { width: 100%; }
-.ic-panel--popup .ic-btn { flex: 1; }
+.ic-actions { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.ic-panel--popup .ic-actions { width: 100%; flex: 1 1 0; }
+.ic-panel--popup .ic-btn { flex: 1 1 0; min-width: 0; }
 .ic-btn {
-  appearance: none; border: 1px solid transparent; border-radius: 8px;
+  appearance: none; border: 1px solid transparent; border-radius: 8px; min-width: 0;
   font-size: 11.5px; font-weight: 500; padding: 7px 12px; cursor: pointer; white-space: nowrap;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
 }

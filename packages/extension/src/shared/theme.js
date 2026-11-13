@@ -146,9 +146,17 @@ export function watchTheme(onChange) {
     if (area === 'local' && changes?.[THEME_KEY]) onChange();
   };
   query.addEventListener('change', onMedia);
-  chrome.storage.onChanged.addListener(onStorage);
+  try {
+    chrome.storage.onChanged.addListener(onStorage);
+  } catch {
+    // 内容脚本在没有 storage 的环境下仍应可用，只是不再跨页面同步主题
+  }
   return () => {
     query.removeEventListener('change', onMedia);
-    chrome.storage.onChanged.removeListener(onStorage);
+    try {
+      chrome.storage.onChanged.removeListener(onStorage);
+    } catch {
+      /* 同上 */
+    }
   };
 }

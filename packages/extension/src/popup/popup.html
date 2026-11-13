@@ -9,9 +9,9 @@
       html,
       body {
         margin: 0;
-        width: 382px;
         height: 100%;
-        min-height: 600px;
+        /* 设计高度 600，但窗口内容区更矮时跟随实际视口，避免底栏被裁 */
+        min-height: min(600px, 100vh);
         overflow: hidden;
         background: var(--canvas);
         color: var(--ink);
@@ -20,10 +20,23 @@
         -webkit-font-smoothing: antialiased;
         color-scheme: light dark;
       }
+      html {
+        width: 100%;
+        background: var(--canvas);
+      }
+      /* 382px 是弹窗的首选宽度（Chrome 据此定窗口），窄窗口下由 max-width 收回 */
+      body {
+        width: 382px;
+        max-width: 100%;
+        min-width: 0;
+      }
       #app {
         display: flex;
+        width: 100%;
+        max-width: 100%;
         height: 100%;
         min-height: 0;
+        min-width: 0;
       }
     </style>
   </head>
