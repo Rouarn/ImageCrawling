@@ -110,6 +110,8 @@ pnpm --filter backend exec puppeteer browsers install chrome
 | GET | `/api/crawl/options` | 抓取参数默认值与限制 |
 | GET | `/api/adapters` | 站点适配器预设（前端下拉数据） |
 | POST | `/api/crawl/stream` | 启动抓取任务，SSE 推送进度 |
+| POST | `/api/crawl/tasks/:taskId/verification` | 打开人工验证窗口（本机可见 Chrome） |
+| DELETE | `/api/crawl/tasks/:taskId/verification` | 取消等待中的人工验证 |
 | GET | `/api/images/groups` | 分组及数量统计 |
 | GET | `/api/images` | 分页图片列表（`group` / `page` / `pageSize` / `q` / `sort`） |
 | GET | `/api/images/metadata?path=` | 单张图片元信息（含宽高） |
@@ -154,6 +156,17 @@ pnpm --filter backend exec puppeteer browsers install chrome
 | `GIRL_ATLAS_PROXY` / `CRAWL_PROXY_URL` | HTTP 代理，形如 `http://127.0.0.1:7897` |
 | `GIRL_ATLAS_COOKIE` | 可选，登录态或年龄门 Cookie |
 
+### 人工验证（人机校验）
+
+抓取主干内置通用挑战处理：命中人机校验时任务挂起等待，不报错也不傻等超时；前端任务面板出现“需要人工验证”提示卡，展示判定依据、已等待/剩余时长，并提供“打开验证窗口”和“取消任务”。
+
+- **判定**：403/429、标题命中 `Just a moment...` / `请稍候` / `安全验证` 等、页面含 `cf_chl_opt`、`challenge-platform`、`g-recaptcha` 等标记，任一命中即进入等待。判定集中在 `ChallengeDetector`，静态取页、无头取页、分页规划三条路径共用。
+- **窗口**：`POST /api/crawl/tasks/:taskId/verification` 在本机拉起正常窗口的 Chrome（`headless: false`），使用独立 profile（`DATA_DIR` 下的 `chrome-verification-profile`，默认 `.data/`，不写入仓库），沿用任务代理与 UA，打开目标地址。
+- **继续**：校验通过后沿用这个已通过校验的浏览器上下文继续抓页。实测把 `cf_clearance` 交给独立无头实例仍会被 Cloudflare 重新挑战，因此不做 Cookie 搬运，而是复用同一浏览器会话；任务结束时自动关闭窗口并释放 profile。
+- **失败路径**：超过 `VERIFICATION_TIMEOUT_MS` → `CHALLENGE_TIMEOUT`；用户取消 → `CRAWL_ABORTED`；窗口被关闭 → `CHALLENGE_FAILED`；验证后仍是挑战页 → `CHALLENGE_FAILED`；同一任务最多触发 3 次验证。
+- **站点微调**：适配器可通过 `challenge.detect` / `challenge.successSelector` / `challenge.successCookies` / `challenge.verificationUrl` 覆盖或补充通用规则；`detect` 返回 `null` 表示明确不是挑战，返回 `undefined` 则交回通用规则。`girl-atlas` 声明了 `cf_clearance` 与验证入口首页。
+- **profile 过期**：启动时清理超过 `VERIFICATION_PROFILE_TTL_MS`（默认 7 天）未使用的 profile。
+
 ### SSE 事件
 
 每个事件都是 `data: { "type": "...", ... }`：
@@ -167,6 +180,7 @@ pnpm --filter backend exec puppeteer browsers install chrome
 | `page-done` | `found` / `added` / `mode` / `durationMs` | 某页完成 |
 | `page-fallback` | `reason` | 静态抓取失败，切换无头模式 |
 | `page-failed` | `message` | 某页最终失败（任务继续） |
+| `challenge` | `state` / `taskId` / `reason` / `matched` / `timeoutMs` / `waitedMs` | 人工验证状态：`pending` 进入等待，`resolved` 继续抓取，`cancelled` / `timeout` / `window-closed` / `failed` 结束 |
 | `discover` | `count` / `pages` | 去重后的图片总数 |
 | `download-start` | `total` | 开始下载 |
 | `download-progress` | `done` / `total` / `saved` / `failed` | 下载进度 |
@@ -196,6 +210,9 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 | `IMAGE_NOT_FOUND` | 图片不存在或不是受支持的图片 |
 | `PATH_OUTSIDE_STORAGE` | 路径越出存储根目录 |
 | `STORAGE_ERROR` | 文件系统读写异常 |
+| `CHALLENGE_TIMEOUT` | 人工验证超时 |
+| `CHALLENGE_FAILED` | 验证窗口关闭、启动失败或验证后仍是挑战页 |
+| `CHALLENGE_NOT_PENDING` | 当前任务没有等待中的人工验证 |
 | `CRAWL_ABORTED` | 任务被取消 |
 | `NOT_FOUND` | 路由不存在 |
 | `INTERNAL_ERROR` | 未捕获异常 |
@@ -210,6 +227,9 @@ curl -N -X POST http://localhost:5678/api/crawl/stream \
 | `CRAWL_PROXY_URL` | 空 | 适配器可用的出站代理，回退读取 `HTTPS_PROXY` / `HTTP_PROXY` |
 | `GIRL_ATLAS_PROXY` | 空 | Girl Atlas 专用代理，优先于 `CRAWL_PROXY_URL` |
 | `GIRL_ATLAS_COOKIE` | 空 | Girl Atlas 登录态 / 年龄门 Cookie |
+| `DATA_DIR` | `<仓库>/.data` | 本地运行态数据目录（人工验证 profile 等），已在 `.gitignore` 中 |
+| `VERIFICATION_TIMEOUT_MS` | `300000` | 等待人工完成校验的超时时间（毫秒） |
+| `VERIFICATION_PROFILE_TTL_MS` | `604800000` | 验证 profile 复用期限，超过后启动时清理（默认 7 天） |
 | `VITE_API_TARGET` | `http://localhost:5678` | 前端开发代理目标 |
 
 ## 存储约定
@@ -247,7 +267,21 @@ pnpm --filter backend test
 - 前端预设：11 项 UI 断言通过，覆盖下拉出现、自动填入 URL、目录推导、建议页数、条件提示、无头自动开启、清除预设恢复通用模式。
 - 适配器接入后默认路径回归仍为 25/25。
 - Chrome 探测：不设 `CHROME_PATH` 时命中 `/Applications/Google Chrome.app/...`，健康检查 `headless.available=true`，无头抓取实际保存成功；把所有探测路径置空后，提示会列出 8 条尝试过的路径并指向 `CHROME_PATH`。
-- girl-atlas 实测：适配器正常命中并完成入口改写、代理注入、403 容忍、等待与滚动，但本机经 `127.0.0.1:7897` 代理仍停留在 Cloudflare 人机校验页，挑战子资源（`*.challenges.cloudflare.com`）连接被关闭，页面始终未出现真实内容，因此未抓到图片。任务会以 `PAGE_FETCH_FAILED`（页面未渲染出预期内容）明确结束，不会伪装成成功。
+
+### 人工验证
+
+```bash
+pnpm --filter backend test
+```
+
+- 单测 29 项全部通过：挑战判定（403 / 429 / 标题 / 元素 / 正常页面 / 适配器优先 / `null` 覆盖通用规则 / 无规则回退 / 契约）与验证状态机（`resolved` / `cancelled` / `timeout` / `window-closed` / 重复结算 / 取消后不被超时覆盖）。
+- girl-atlas 实测（经 `127.0.0.1:7897` 代理）：
+  - 静态请求与无头页面均命中 Cloudflare 挑战，SSE 收到 `challenge` 的 `pending`，前端出现提示卡（含判定依据 `status:403`、倒计时、验证地址、打开/取消按钮）。
+  - 点击“打开验证窗口”后本机弹出独立 profile 的 Chrome 窗口（不是日常 Chrome），`POST /api/crawl/tasks/:taskId/verification` 返回 `opened`。
+  - 验证窗口内通过校验后，任务自动继续：3 页共发现 89 个图片地址，保存 88 张（1 张站点广告雪碧图超时），任务结束后验证窗口自动关闭。
+  - 对照实验：把 `cf_clearance` 注入独立无头实例会被再次挑战，因此继续抓取复用的是验证窗口的浏览器上下文（代码见 `HumanVerificationService.getVerifiedPage`）。
+  - 站点适配器等待选择器按真实 DOM 修正为 `.main-content, .card`，并补充 `#adult-18-modal button` 年龄门点击。
+- 人工验证接入后默认路径回归仍为 25/25。
 
 ## 提交规范
 
