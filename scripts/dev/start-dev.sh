@@ -8,9 +8,9 @@ echo "Backend Port: $BACKEND_PORT"
 echo "API Target  : $FRONTEND_API_TARGET"
 echo "=========================================="
 
-BACKEND_CMD="cd backend && PORT=$BACKEND_PORT pnpm start:dev"
+BACKEND_CMD="cd packages/backend && PORT=$BACKEND_PORT pnpm start:dev"
 
-FRONTEND_CMD="wait-on tcp:$BACKEND_PORT && cd frontend && VITE_API_TARGET=$FRONTEND_API_TARGET pnpm dev"
+FRONTEND_CMD="wait-on tcp:$BACKEND_PORT && cd packages/frontend && VITE_API_TARGET=$FRONTEND_API_TARGET pnpm dev"
 
 echo "Starting services in parallel..."
 

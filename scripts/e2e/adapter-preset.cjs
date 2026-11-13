@@ -2,7 +2,7 @@
 const path = require('node:path');
 const { createRequire } = require('node:module');
 
-const backendRequire = createRequire(path.resolve(__dirname, '../../backend/package.json'));
+const backendRequire = createRequire(path.resolve(__dirname, '../../packages/backend/package.json'));
 const puppeteer = backendRequire('puppeteer');
 const { cleanupStaleTestDirs } = require('./lib/test-run.cjs');
 

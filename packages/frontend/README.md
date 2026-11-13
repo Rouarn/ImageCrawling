@@ -17,9 +17,9 @@ pnpm --filter frontend lint
 ## 配置
 
 ```bash
-cp frontend/.env.example frontend/.env   # 仓库已带默认值，按需修改
+cp packages/frontend/.env.example packages/frontend/.env   # 仓库已带默认值，按需修改
 ```
 
 - `VITE_API_TARGET`：开发服务器把 `/api`、`/media` 代理到的后端地址，默认 `http://localhost:5678`。
 - 该变量只在 `vite.config.ts` 中读取，不会打包进浏览器代码。
-- 本地私有覆盖写入 `frontend/.env.local`（已忽略）。
+- 本地私有覆盖写入 `packages/frontend/.env.local`（已忽略）。

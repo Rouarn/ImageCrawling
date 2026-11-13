@@ -12,8 +12,8 @@
 
 ```bash
 pnpm install
-pnpm --filter backend build      # 产物：backend/dist
-pnpm --filter frontend build     # 产物：frontend/dist
+pnpm --filter backend build      # 产物：packages/backend/dist
+pnpm --filter frontend build     # 产物：packages/frontend/dist
 ```
 
 ## 启动
@@ -25,15 +25,15 @@ PORT=5678 pnpm --filter backend start:prod
 或直接运行构建产物：
 
 ```bash
-PORT=5678 node backend/dist/main.js
+PORT=5678 node packages/backend/dist/main.js
 ```
 
-前端是纯静态文件，用任意静态服务器托管 `frontend/dist`，并把 `/api` 与 `/media` 反向代理到后端。Nginx 示例：
+前端是纯静态文件，用任意静态服务器托管 `packages/frontend/dist`，并把 `/api` 与 `/media` 反向代理到后端。Nginx 示例：
 
 ```nginx
 server {
   listen 80;
-  root /path/to/image-crawling/frontend/dist;
+  root /path/to/image-crawling/packages/frontend/dist;
 
   location /api/ {
     proxy_pass http://127.0.0.1:5678;
@@ -67,11 +67,11 @@ server {
 ## 配置来源
 
 ```bash
-cp backend/.env.example backend/.env    # 后端：端口、存储、代理、Cookie
-cp frontend/.env.example frontend/.env  # 前端：开发代理目标（仓库已带默认值）
+cp packages/backend/.env.example packages/backend/.env    # 后端：端口、存储、代理、Cookie
+cp packages/frontend/.env.example packages/frontend/.env  # 前端：开发代理目标（仓库已带默认值）
 ```
 
-优先级：真实进程环境变量 > `backend/.env` > 代码内默认值。`backend/.env` 与 `frontend/.env.local` 已被忽略，模板可以入库。
+优先级：真实进程环境变量 > `packages/backend/.env` > 代码内默认值。`packages/backend/.env` 与 `packages/frontend/.env.local` 已被忽略，模板可以入库。
 
 ## 环境变量总表
 

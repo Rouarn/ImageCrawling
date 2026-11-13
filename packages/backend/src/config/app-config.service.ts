@@ -48,7 +48,7 @@ export class AppConfigService {
     this.storageRoot = this.readStorageRoot();
     this.dataRoot =
       process.env.DATA_DIR?.trim() ||
-      path.resolve(__dirname, '../../../data/browser');
+      path.resolve(__dirname, '../../../../data/browser');
     this.verificationProfileDir = path.join(
       this.dataRoot,
       'chrome-verification-profile',
@@ -116,8 +116,8 @@ export class AppConfigService {
   private readStorageRoot(): string {
     const configured = process.env.STORAGE_DIR?.trim();
     if (configured) return path.resolve(configured);
-    // 默认位于仓库根目录：backend/dist/config -> ../../../data/library
-    return path.resolve(__dirname, '../../../data/library');
+    // 默认位于仓库根目录：packages/backend/dist/config -> ../../../../data/library
+    return path.resolve(__dirname, '../../../../data/library');
   }
 }
 

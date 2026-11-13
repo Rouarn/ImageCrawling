@@ -13,8 +13,9 @@
 
 ```
 image-crawling/
-├── backend/        后端源码与配置
-├── frontend/       前端源码与配置
+├── packages/
+│   ├── backend/    后端源码与配置
+│   └── frontend/   前端源码与配置
 ├── scripts/
 │   ├── dev/        启动脚本
 │   └── e2e/        端到端套件与 fixture
@@ -27,7 +28,7 @@ image-crawling/
 ## 后端分层
 
 ```
-backend/src/
+packages/backend/src/
 ├── config/       AppConfigService：端口、存储目录、数据目录、代理、Chrome 路径
 ├── common/
 │   ├── errors/   错误码、AppException、全局异常过滤器
@@ -73,7 +74,7 @@ backend/src/
 ## 前端分层
 
 ```
-frontend/src/
+packages/frontend/src/
 ├── api/            契约类型、Axios 客户端、SSE 解析
 ├── app/            路由、主题、QueryClient、全局任务监听
 ├── components/

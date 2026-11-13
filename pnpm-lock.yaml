@@ -24,7 +24,7 @@ importers:
         specifier: ^9.0.4
         version: 9.0.4
 
-  backend:
+  packages/backend:
     dependencies:
       '@nestjs/common':
         specifier: ^11.0.1
@@ -124,7 +124,7 @@ importers:
         specifier: ^8.20.0
         version: 8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
-  frontend:
+  packages/frontend:
     dependencies:
       '@ant-design/cssinjs':
         specifier: ^2.1.2

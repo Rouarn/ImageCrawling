@@ -5,7 +5,7 @@ const path = require('node:path');
 const { createRequire } = require('node:module');
 
 // puppeteer 是后端依赖，这里复用，避免在根目录重复安装
-const backendRequire = createRequire(path.resolve(__dirname, '../../backend/package.json'));
+const backendRequire = createRequire(path.resolve(__dirname, '../../packages/backend/package.json'));
 const puppeteer = backendRequire('puppeteer');
 const { startFixtureServer } = require('./lib/fixture-server.cjs');
 const { trackTestOutDir, cleanupTestDirs, cleanupStaleTestDirs } = require('./lib/test-run.cjs');

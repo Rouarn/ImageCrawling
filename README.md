@@ -33,8 +33,9 @@ VITE_API_TARGET=http://localhost:3000 pnpm --filter frontend dev
 
 ```
 .
-├── backend/          NestJS API：抓取、解析、下载、图片库
-├── frontend/         React 控制台与图片库
+├── packages/
+│   ├── backend/      NestJS API：抓取、解析、下载、图片库
+│   └── frontend/     React 控制台与图片库
 ├── scripts/
 │   ├── dev/          启动脚本（macOS / Windows）
 │   └── e2e/          端到端套件与 fixture

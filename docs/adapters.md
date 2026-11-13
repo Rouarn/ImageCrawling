@@ -4,7 +4,7 @@
 
 ## 代码结构
 
-- 固定在 `backend/src/crawl/adapters/`：`types.ts` 定义契约，`registry.ts` 按数组顺序注册（越靠前优先级越高，默认适配器始终最后），每个站点一个文件。
+- 固定在 `packages/backend/src/crawl/adapters/`：`types.ts` 定义契约，`registry.ts` 按数组顺序注册（越靠前优先级越高，默认适配器始终最后），每个站点一个文件。
 - 适配器可覆盖：域名/URL 匹配、入口 URL 改写、开抓前准备（Cookie / 登录态 / 代理会话）、页面等待与年龄门点击、滚动与图片收集策略、分页规则、图片下载请求头。
 - `CrawlService` 中只有一处 `resolveAdapter()`；未命中任何站点时回落到默认适配器，行为与通用抓取完全一致。
 - 代理、Cookie 等敏感或环境相关配置只从环境变量读取，不写进适配器源码。
@@ -13,7 +13,7 @@
 
 1. 在 `crawl/adapters/` 下新建站点文件，实现 `SiteAdapter` 契约（`types.ts`）。
 2. 追加到 `registry.ts` 的 `REGISTERED_ADAPTERS`，注意顺序即优先级。
-3. 敏感配置通过 `AdapterConfig.get()` 读环境变量，并补进 `backend/.env.example`。
+3. 敏感配置通过 `AdapterConfig.get()` 读环境变量，并补进 `packages/backend/.env.example`。
 4. 在 `adapters.spec.ts` 补契约断言：匹配、回退、优先级、入口改写、代理/Cookie 行为。
 5. 前端“站点预设”下拉会自动出现，数据来自 `GET /api/adapters`。
 
