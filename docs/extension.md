@@ -22,6 +22,8 @@ pnpm extension:watch   # 监听 src/，改动后自动重建
 - 静态文件（manifest、HTML）会被同步复制到 `dist/`，不会只重建 JS。
 - `Ctrl+C` 停止监听。
 
+图标取自团队品牌资源包 `icons/extensions/icon{16,32,48,128}.png`（与 `favicon-纸` 同源：纸面超椭圆底板 + 四色星，安全边距已按品牌规范留好），放在 `src/icons/` 并在构建时原样拷贝到 `dist/icons/`，不重新生成、不缩放改色。popup 与设置页也用同一份 `icon-32.png` 作为 favicon。
+
 不做商店上架，没有打包 zip / 签名步骤。
 
 ## 配置
