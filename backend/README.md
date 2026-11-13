@@ -1,102 +1,72 @@
-# Image Crawling - Backend
+# Backend · Image Crawler
 
-基于 NestJS 构建的图片抓取服务，提供 RESTful API 和实时 SSE 流式进度反馈。
+NestJS 11 + TypeScript。负责抓取编排、HTML 解析、无头渲染、图片下载与图片库查询。
 
-## 🛠 技术栈
-
-- **Framework**: [NestJS](https://nestjs.com/) (Express platform)
-- **Crawling**:
-  - [Puppeteer](https://pptr.dev/): 用于动态页面渲染和复杂反爬场景。
-  - [Cheerio](https://cheerio.js.org/): 用于静态 HTML 解析（速度更快）。
-- **Utilities**:
-  - `fs-extra`: 文件系统操作。
-  - `node-fetch`: HTTP 请求。
-  - `class-validator`: DTO 验证。
-
-## 📦 脚本命令
-
-在根目录下使用 `pnpm --filter backend <command>` 或进入 `backend` 目录运行：
-
-- `pnpm start:dev`: 启动开发服务器（热重载）。
-- `pnpm build`: 编译 TypeScript 代码到 `dist` 目录。
-- `pnpm start:prod`: 运行编译后的生产代码。
-- `pnpm lint`: 运行 ESLint 检查。
-- `pnpm format`: 格式化代码。
-
-## 🔌 API 文档
-
-### 1. 创建抓取任务
-
-**Endpoint**: `POST /api/crawl`
-
-**Body (JSON)**:
-```json
-{
-  "url": "https://example.com/gallery",
-  "options": {
-    "outDir": "my-gallery",      // 输出目录名
-    "concurrency": 5,            // 并发下载数
-    "maxPages": 10,              // 最大抓取页数
-    "pageDelayMs": 1000,         // 翻页延迟
-    "fetchTimeoutMs": 15000,     // 请求超时
-    "pagePattern": "",           // 可选：分页模式 url?p={page}
-    "startPage": 1,              // 起始页码
-    "endPage": 10,               // 结束页码
-    "useHeadless": true,         // 是否使用 Puppeteer
-    "headers": {                 // 自定义请求头
-      "User-Agent": "Mozilla/5.0..."
-    }
-  }
-}
-```
-
-### 2. 实时抓取进度流 (SSE)
-
-**Endpoint**: `GET /api/crawl/stream`
-
-**Query Parameters**: 与 POST `/api/crawl` 的 Body 字段一致（作为 URL 参数传递）。
-
-**Response**: `text/event-stream`
-- 返回实时的 JSON 格式日志数据。
-- 事件类型包括：`plan` (计划), `page` (页面), `page_done` (页面完成), `complete` (全部完成), `error` (错误)。
-
-### 3. 获取图片列表
-
-**Endpoint**: `GET /api/images`
-
-**Response**:
-返回按目录分组的图片文件列表。
-
-### 4. 删除图片
-
-**Endpoint**: `DELETE /api/images`
-
-**Body (JSON)**:
-```json
-{
-  "name": "directory/filename.jpg" // 相对 storage 的路径
-}
-```
-
-## 📂 目录结构
+## 模块
 
 ```
 src/
-├── common/             # 公共模块
-│   └── constants.ts    # 常量定义 (STORAGE_ROOT)
-├── crawl/              # 抓取核心模块
-│   ├── dto/            # 数据传输对象定义
-│   ├── crawl.controller.ts # 控制器
-│   └── crawl.service.ts    # 抓取逻辑实现 (Puppeteer/Cheerio)
-├── images/             # 图片管理模块
-│   ├── dto/
-│   ├── images.controller.ts
-│   └── images.service.ts
-├── app.module.ts       # 根模块
-└── main.ts             # 入口文件
+├── config/       AppConfigService：端口、存储目录、Chrome 路径
+├── common/
+│   ├── errors/   错误码、AppException、全局异常过滤器
+│   ├── http/     统一响应包装、请求 ID、校验管道工厂
+│   └── utils/    路径安全、AbortSignal、超时、图片文件头识别
+├── storage/      存储根目录与路径校验的唯一入口
+├── crawl/
+│   ├── services/ 分页规划 / 静态抓取 / 解析 / 无头浏览器 / 下载 / 编排
+│   ├── dto/      请求参数与校验
+│   ├── types/    事件、选项、摘要
+│   └── utils/    请求头构造
+├── images/       控制器 / 服务 / Repository（文件系统访问）
+└── system/       健康检查
 ```
 
-## ⚙️ 配置
+## 抓取链路
 
-- **端口**: 默认为 `3000`，可通过环境变量 `PORT` 修改。
-- **存储目录**: 图片下载至项目根目录下的 `storage` 文件夹。
+1. `CrawlController` 校验 DTO，建立 SSE 通道，监听客户端断开。
+2. `CrawlService` 解析默认值，调用 `PaginationPlannerService` 规划分页。
+   - 自动模式会边探测下一页边缓存 HTML，后续解析不再重复请求。
+   - 模板模式按 `{page}` 生成 URL，单次最多 200 页。
+3. 每页优先静态解析；失败则回退到 `HeadlessBrowserService`。浏览器实例在进程内复用。
+4. 图片地址按页去重后交给 `ImageDownloaderService` 并发下载。
+   - 校验文件头与 `content-type`，拒绝 HTML/JS 等非图片。
+   - 文件名冲突自动追加后缀。
+5. 全程通过 `CrawlEvent` 推送进度；单页、单图失败不会中断任务。
+
+## 接口
+
+统一响应 `{ success, data }`，错误 `{ success: false, error: { code, message, details? }, meta }`。
+
+| 方法 | 路径 |
+| --- | --- |
+| GET | `/api/system/health` |
+| GET | `/api/crawl/options` |
+| POST | `/api/crawl/stream` |
+| GET | `/api/images/groups` |
+| GET | `/api/images` |
+| GET | `/api/images/metadata` |
+| DELETE | `/api/images` |
+
+启动后访问 `http://localhost:5678/api/docs` 查看 Swagger。
+
+## 配置
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PORT` | `3000` | 监听端口 |
+| `STORAGE_DIR` | `<仓库>/storage` | 存储根目录 |
+| `CHROME_PATH` | 空 | 无头模式使用的 Chrome 路径 |
+
+## 命令
+
+```bash
+pnpm --filter backend start:dev
+pnpm --filter backend build
+pnpm --filter backend lint
+```
+
+## 约定
+
+- 所有文件系统路径必须经过 `StorageService`，越界直接返回 `PATH_OUTSIDE_STORAGE`。
+- 新增错误场景时先补充 `ErrorCode`，再抛 `AppException`，不要直接抛裸 `Error`。
+- 新增接口统一使用 DTO 校验与 Swagger 装饰器，保持响应结构与文档同步。
