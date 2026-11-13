@@ -70,7 +70,7 @@ void test('合法命名：空格、括号、中文标点、书名号、emoji 与
   assert.ok(fs.statSync(spaces).isDirectory());
 });
 
-void test('合法命名：空字符串以外仍保留默认层级语义', () => {
+void test('空输入被拒绝', () => {
   const { service } = createService();
   assert.throws(
     () => service.resolveDirectory(''),
