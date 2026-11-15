@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/dev/start-dev.ps1",
+    "dev-windows": "powershell -ExecutionPolicy Bypass -File ./scripts/dev/start-dev.ps1",
     "dev-mac": "bash ./scripts/dev/start-dev.sh",
     "e2e:ui": "node scripts/e2e/ui-regression.cjs",
     "e2e:adapters": "node scripts/e2e/adapter-preset.cjs",
