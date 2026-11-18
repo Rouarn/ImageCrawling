@@ -15,7 +15,7 @@
     "prepare": "husky"
   },
   "keywords": [],
-  "author": "",
+  "author": "VaKao <woyuxiaji@foxmail.com>",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.18.2",
   "devDependencies": {
