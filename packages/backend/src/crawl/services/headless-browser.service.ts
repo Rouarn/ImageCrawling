@@ -13,6 +13,7 @@ import {
   resolveChromeExecutable,
   type ChromeResolution,
 } from '../../common/utils/chrome-path.util';
+import { IMAGE_URL_PATTERN } from '../../common/utils/image-signature.util';
 import { AppConfigService } from '../../config/app-config.service';
 import type { ScrollStrategy } from '../adapters/types';
 import { ChallengeDetectedError } from '../types/challenge';
@@ -20,9 +21,6 @@ import type { ResolvedCrawlOptions } from '../types/crawl-options';
 import { parseCookieHeader } from '../utils/cookie.util';
 import { buildBrowserHeaders, resolveUserAgent } from '../utils/headers.util';
 import { ChallengeDetector } from './challenge-detector.service';
-
-const IMAGE_URL_PATTERN =
-  /\.(jpg|jpeg|png|gif|webp|svg|avif|heic|ico|bmp|tiff)(\?.*)?$/i;
 
 const LAUNCH_ARGS = [
   '--no-sandbox',
@@ -138,7 +136,8 @@ export class HeadlessBrowserService implements OnModuleDestroy {
       await this.preparePage(page, options, pageUrl);
       this.throwIfAborted(signal);
 
-      const domUrls = await page.evaluate(() => {
+      const domUrls = await page.evaluate((imageUrlPatternSource: string) => {
+        const imageUrlPattern = new RegExp(imageUrlPatternSource, 'i');
         const result = new Set<string>();
         const toAbsolute = (value: string | null): string | null => {
           if (!value) return null;
@@ -244,12 +243,7 @@ export class HeadlessBrowserService implements OnModuleDestroy {
 
         document.querySelectorAll('a').forEach((anchor) => {
           const href = anchor.getAttribute('href');
-          if (
-            href &&
-            /\.(jpg|jpeg|png|gif|webp|svg|avif|heic|ico|bmp|tiff)(\?.*)?$/i.test(
-              href,
-            )
-          ) {
+          if (href && imageUrlPattern.test(href)) {
             const absolute = toAbsolute(href);
             if (absolute) result.add(absolute);
           }
@@ -261,7 +255,7 @@ export class HeadlessBrowserService implements OnModuleDestroy {
             url.startsWith('data:') ||
             url.startsWith('blob:'),
         );
-      });
+      }, IMAGE_URL_PATTERN.source);
 
       const merged = new Set<string>([
         ...intercepted,

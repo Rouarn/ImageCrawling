@@ -3,19 +3,44 @@ export interface SniffedImage {
   mime: string;
 }
 
-const IMAGE_EXTENSIONS = new Set([
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.gif',
-  '.webp',
-  '.bmp',
-  '.svg',
-  '.avif',
-  '.heic',
-  '.tiff',
-  '.ico',
-]);
+/**
+ * 受支持的图片扩展名（不含前导点）。
+ *
+ * 下载落盘、图片库列表识别、导入校验共用这一份：任何一侧单独维护列表，
+ * 都会出现「下载成功但列表看不到」的不一致。
+ */
+export const IMAGE_EXTENSIONS = [
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'bmp',
+  'svg',
+  'avif',
+  'heic',
+  'tiff',
+  'ico',
+] as const;
+
+/** URL 里出现、但落盘时统一成另一种写法的扩展名 */
+const EXTENSION_ALIASES: Record<string, string> = {
+  jpeg: 'jpg',
+  tif: 'tiff',
+};
+
+/**
+ * 图片 URL 的扩展名匹配（允许扩展名后跟查询串）。
+ *
+ * 无头模式在浏览器上下文里执行，无法直接引用 Node 侧常量，
+ * 因此把 pattern 源码作为参数传给 page.evaluate，保证两端同源。
+ */
+export const IMAGE_URL_PATTERN = new RegExp(
+  `\\.(?:${IMAGE_EXTENSIONS.join('|')})(?:\\?.*)?$`,
+  'i',
+);
+
+const IMAGE_EXTENSION_SET = new Set(IMAGE_EXTENSIONS.map((ext) => `.${ext}`));
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -36,9 +61,15 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/x-icon2': 'ico',
 };
 
-/** 判断扩展名是否属于受支持的图片类型 */
+/** 判断扩展名（带前导点）是否属于受支持的图片类型 */
 export function isImageExtension(ext: string): boolean {
-  return IMAGE_EXTENSIONS.has(ext.toLowerCase());
+  return IMAGE_EXTENSION_SET.has(ext.toLowerCase());
+}
+
+/** 把扩展名归一成落盘写法，例如 `jpeg` → `jpg`、`tif` → `tiff` */
+export function normalizeImageExtension(ext: string): string {
+  const normalized = ext.toLowerCase();
+  return EXTENSION_ALIASES[normalized] ?? normalized;
 }
 
 export function extensionFromMime(mime: string | null | undefined): string {

@@ -13,6 +13,7 @@ import { requestUrl } from '../../common/utils/http.util';
 import {
   extensionFromMime,
   isImageExtension,
+  normalizeImageExtension,
   sniffImageType,
 } from '../../common/utils/image-signature.util';
 import { StorageService } from '../../storage/storage.service';
@@ -27,11 +28,6 @@ import { buildImageHeaders } from '../utils/headers.util';
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const NON_IMAGE_CONTENT_TYPE =
   /^(text\/html|application\/xhtml\+xml|application\/json|application\/javascript|text\/javascript|text\/plain)/;
-
-const EXT_ALIASES: Record<string, string> = {
-  jpeg: 'jpg',
-  tif: 'tiff',
-};
 
 /** 通过已验证浏览器上下文取二进制内容（图片） */
 export type BinaryFetcher = (url: string) => Promise<{
@@ -345,7 +341,7 @@ export class ImageDownloaderService {
     }
 
     const urlExt = this.urlExtension(url);
-    if (urlExt) return EXT_ALIASES[urlExt] ?? urlExt;
+    if (urlExt) return normalizeImageExtension(urlExt);
 
     throw new AppException(
       ErrorCode.DOWNLOAD_FAILED,
@@ -360,7 +356,7 @@ export class ImageDownloaderService {
     extension: string,
     usedNames: Set<string>,
   ): string {
-    const ext = EXT_ALIASES[extension] ?? extension;
+    const ext = normalizeImageExtension(extension);
     let candidate = `${stem}.${ext}`;
     let suffix = 1;
     while (

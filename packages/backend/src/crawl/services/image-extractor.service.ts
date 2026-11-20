@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { load, type CheerioAPI } from 'cheerio';
-
-const IMAGE_URL_PATTERN =
-  /\.(jpg|jpeg|png|gif|webp|svg|avif|heic|ico|bmp|tiff)(\?.*)?$/i;
+import { IMAGE_URL_PATTERN } from '../../common/utils/image-signature.util';
 
 /** 懒加载图片常见的自定义属性，按优先级排列 */
 const IMAGE_ATTRIBUTES = [
