@@ -2,15 +2,23 @@ import { useState } from 'react';
 import {
   BranchesOutlined,
   CompassOutlined,
-  FolderOpenOutlined,
   LinkOutlined,
   ReloadOutlined,
   SyncOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Form, Input, InputNumber, Segmented, Select } from 'antd';
+import {
+  Alert,
+  AutoComplete,
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  Segmented,
+  Select,
+} from 'antd';
 import type { CrawlRequest } from '@/api/contracts';
-import { useCrawlOptions, useSiteAdapters } from '../queries';
+import { useCrawlOptions, useOutDirOptions, useSiteAdapters } from '../queries';
 import { deriveOutDir } from '../lib/derive-out-dir';
 import { CrawlAdvancedFields } from './crawl-advanced-fields';
 import { Panel } from '@/components/ui/panel';
@@ -52,6 +60,7 @@ export function CrawlForm() {
   const [form] = Form.useForm<CrawlFormValues>();
   const options = useCrawlOptions();
   const adapters = useSiteAdapters();
+  const outDirOptions = useOutDirOptions();
   const { data: health } = useSystemHealth();
   const startTask = useCrawlTaskStore((state) => state.start);
   const status = useCrawlTaskStore((state) => state.status);
@@ -212,14 +221,20 @@ export function CrawlForm() {
             label="输出目录"
             extra={
               <span className="text-[11px]">
-                相对 data/library/ 目录，可自定义；支持空格、括号、中文标点与 emoji，不能以点或空格开头/结尾
+                相对 data/library/ 目录，可从已有分组中选择或直接输入新目录；支持空格、括号、中文标点与
+                emoji，不能以点或空格开头/结尾
               </span>
             }
           >
-            <Input
-              prefix={<FolderOpenOutlined className="text-ink-faint" />}
+            <AutoComplete
+              allowClear
+              options={outDirOptions.map((directory) => ({ value: directory }))}
               placeholder="画廊 2024（精选）"
-              autoComplete="off"
+              filterOption={(input, option) =>
+                String(option?.value ?? '')
+                  .toLowerCase()
+                  .includes(input.trim().toLowerCase())
+              }
             />
           </Form.Item>
 
